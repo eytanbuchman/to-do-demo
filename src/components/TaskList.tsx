@@ -1,81 +1,70 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { TaskForm } from './TaskForm'
 import Task from './Task'
-import { PlusIcon, FunnelIcon } from '@heroicons/react/24/outline'
-import toast from 'react-hot-toast'
+import { TaskForm } from './TaskForm'
+import { toast } from 'react-hot-toast'
 
 interface TaskType {
   id: string
   title: string
   description: string
-  category: string
+  completed: boolean
   priority: string
-  status: string
+  tags: string[]
   due_date?: string
+  is_recurring: boolean
+  recurrence_pattern?: string
+  subtasks: any[]
+  created_at: string
 }
 
 export const TaskList = () => {
   const [tasks, setTasks] = useState<TaskType[]>([])
   const [loading, setLoading] = useState(true)
-  const [showNewTaskForm, setShowNewTaskForm] = useState(false)
   const [filters, setFilters] = useState({
     priority: '',
-    category: '',
+    tag: '',
     status: ''
   })
-  const [categories, setCategories] = useState<string[]>([])
-
-  useEffect(() => {
-    fetchTasks()
-    fetchCategories()
-  }, [])
-
-  const fetchCategories = async () => {
-    try {
-      console.log('Fetching categories...')
-      const { data, error } = await supabase
-        .from('categories')
-        .select('name')
-
-      if (error) throw error
-
-      setCategories(data.map(c => c.name))
-      console.log('Categories fetched:', data)
-    } catch (error) {
-      console.error('Error fetching categories:', error)
-      toast.error('Failed to load categories')
-    }
-  }
+  const [tags, setTags] = useState<string[]>([])
 
   const fetchTasks = async () => {
     try {
       console.log('Fetching tasks with filters:', filters)
       let query = supabase
-        .from('tasks')
+        .from('todos')
         .select('*')
         .order('created_at', { ascending: false })
 
       if (filters.priority) {
         query = query.eq('priority', filters.priority)
       }
-      if (filters.category) {
-        query = query.eq('category', filters.category)
+      if (filters.status === 'completed') {
+        query = query.eq('completed', true)
+      } else if (filters.status === 'active') {
+        query = query.eq('completed', false)
       }
-      if (filters.status) {
-        query = query.eq('status', filters.status)
+      if (filters.tag) {
+        query = query.contains('tags', [filters.tag])
       }
 
       const { data, error } = await query
-
       if (error) throw error
 
-      console.log('Tasks fetched:', data)
-      setTasks(data || [])
-      setLoading(false)
+      console.log('Fetched tasks:', data)
+      const typedData = data as TaskType[]
+      setTasks(typedData || [])
+
+      // Extract unique tags from tasks
+      const allTags = (typedData || []).reduce((acc: string[], task) => {
+        return [...acc, ...(task.tags || [])]
+      }, [])
+      const uniqueTags = [...new Set(allTags)]
+      setTags(uniqueTags)
     } catch (error) {
       console.error('Error fetching tasks:', error)
-      toast.error('Failed to load tasks')
+      toast.error('Failed to fetch tasks')
+    } finally {
       setLoading(false)
     }
   }
@@ -84,38 +73,40 @@ export const TaskList = () => {
     fetchTasks()
   }, [filters])
 
-  const handleTaskAdded = () => {
-    fetchTasks()
-    setShowNewTaskForm(false)
-  }
-
-  const handleDelete = async (id: string) => {
+  const handleAddTask = async (task: Omit<TaskType, 'id' | 'created_at'>) => {
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', id)
+      console.log('Adding task:', task)
+      const newTask = {
+        ...task,
+        created_at: new Date().toISOString()
+      }
+      const { data, error } = await supabase
+        .from('todos')
+        .insert([newTask])
+        .select()
 
       if (error) throw error
 
-      fetchTasks()
-      toast.success('Task deleted successfully!')
+      console.log('Task added:', data)
+      setTasks([data[0], ...tasks])
+      toast.success('Task added successfully!')
     } catch (error) {
-      console.error('Error deleting task:', error)
-      toast.error('Failed to delete task')
+      console.error('Error adding task:', error)
+      toast.error('Failed to add task')
     }
   }
 
-  const handleUpdate = async (updatedTask: TaskType) => {
+  const handleUpdateTask = async (updatedTask: TaskType) => {
     try {
+      console.log('Updating task:', updatedTask)
       const { error } = await supabase
-        .from('tasks')
+        .from('todos')
         .update(updatedTask)
         .eq('id', updatedTask.id)
 
       if (error) throw error
 
-      fetchTasks()
+      setTasks(tasks.map(task => task.id === updatedTask.id ? updatedTask : task))
       toast.success('Task updated successfully!')
     } catch (error) {
       console.error('Error updating task:', error)
@@ -123,96 +114,82 @@ export const TaskList = () => {
     }
   }
 
+  const handleDeleteTask = async (id: string) => {
+    try {
+      console.log('Deleting task:', id)
+      const { error } = await supabase
+        .from('todos')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+
+      setTasks(tasks.filter(task => task.id !== id))
+      toast.success('Task deleted successfully!')
+    } catch (error) {
+      console.error('Error deleting task:', error)
+      toast.error('Failed to delete task')
+    }
+  }
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-        <div className="animate-pulse text-dark-400">Loading tasks...</div>
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-rebel-red"></div>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-white">Your Missions</h1>
-        <button
-          onClick={() => setShowNewTaskForm(!showNewTaskForm)}
-          className="bg-rebel-red hover:bg-rebel-red-light text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-4 items-center">
+        <select
+          value={filters.priority}
+          onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
+          className="bg-dark-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rebel-red"
         >
-          <PlusIcon className="w-5 h-5" />
-          New Mission
-        </button>
+          <option value="">All Priorities</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+
+        <select
+          value={filters.status}
+          onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+          className="bg-dark-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rebel-red"
+        >
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="completed">Completed</option>
+        </select>
+
+        <select
+          value={filters.tag}
+          onChange={(e) => setFilters({ ...filters, tag: e.target.value })}
+          className="bg-dark-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rebel-red"
+        >
+          <option value="">All Tags</option>
+          {tags.map((tag) => (
+            <option key={tag} value={tag}>{tag}</option>
+          ))}
+        </select>
       </div>
 
-      <div className="bg-dark-800 rounded-lg p-4 mb-6">
-        <div className="flex items-center gap-4">
-          <FunnelIcon className="w-5 h-5 text-dark-400" />
-          <select
-            value={filters.priority}
-            onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
-            className="bg-dark-700 text-white rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rebel-red"
-          >
-            <option value="">All Priorities</option>
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-          </select>
-
-          <select
-            value={filters.category}
-            onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-            className="bg-dark-700 text-white rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rebel-red"
-          >
-            <option value="">All Categories</option>
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={filters.status}
-            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            className="bg-dark-700 text-white rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rebel-red"
-          >
-            <option value="">All Statuses</option>
-            <option value="todo">To Do</option>
-            <option value="in_progress">In Progress</option>
-            <option value="done">Done</option>
-          </select>
-        </div>
-      </div>
-
-      {showNewTaskForm && (
-        <div className="fixed inset-0 bg-dark-900/80 flex items-center justify-center p-4 z-50">
-          <div className="bg-dark-800 p-6 rounded-lg shadow-xl max-w-md w-full">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-white">New Mission</h2>
-              <button 
-                onClick={() => setShowNewTaskForm(false)}
-                className="text-dark-400 hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
-            <TaskForm onTaskAdded={handleTaskAdded} />
-          </div>
-        </div>
-      )}
+      <TaskForm onSubmit={handleAddTask} />
 
       <div className="space-y-4">
         {tasks.length === 0 ? (
-          <div className="text-center text-dark-400 py-8">
-            No tasks found. Start by adding a new mission!
+          <div className="text-center py-8">
+            <p className="text-dark-400">No tasks found. Add one to get started!</p>
           </div>
         ) : (
           tasks.map((task) => (
             <Task
               key={task.id}
               task={task}
-              onDelete={handleDelete}
-              onUpdate={handleUpdate}
+              onDelete={handleDeleteTask}
+              onUpdate={handleUpdateTask}
             />
           ))
         )}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
+import { useAuth } from '../contexts/AuthContext'
 
 interface Category {
   id: string
@@ -11,6 +12,7 @@ interface Category {
 }
 
 export const Categories = () => {
+  const { user } = useAuth()
   const [categories, setCategories] = useState<Category[]>([])
   const [newCategory, setNewCategory] = useState({ name: '', color: '#FF4444' })
   const [loading, setLoading] = useState(true)
@@ -68,7 +70,10 @@ export const Categories = () => {
       console.log('Adding new category:', newCategory)
       const { error } = await supabase
         .from('categories')
-        .insert([newCategory])
+        .insert([{
+          ...newCategory,
+          user_id: user?.id
+        }])
 
       if (error) throw error
 
