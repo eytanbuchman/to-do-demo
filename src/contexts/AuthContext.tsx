@@ -2,70 +2,53 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
-import { supabase } from '../config/supabase';
+import { supabase } from '../lib/supabase';
 
 interface AuthContextType {
   user: User | null;
-  login: () => void;
-  logout: () => void;
   authReady: boolean;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  login: () => {},
-  logout: () => {},
   authReady: false,
+  signOut: async () => {},
 });
 
-export const AuthContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
 
   useEffect(() => {
-    // Check active session
-    const checkSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) {
-          console.error('Error checking session:', error.message);
-          return;
-        }
-        setUser(session?.user || null);
-        setAuthReady(true);
-      } catch (err) {
-        console.error('Error in session check:', err);
-      }
-    };
-
-    checkSession();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('Auth state changed:', _event);
-      setUser(session?.user || null);
+    // Check active sessions and sets the user
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
       setAuthReady(true);
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    // Listen for changes on auth state (sign in, sign out, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setAuthReady(true);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  const signOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   const login = () => {
     console.log('Opening auth modal');
     setShowAuth(true);
-  };
-
-  const logout = async () => {
-    console.log('Logging out user');
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-    } catch (err) {
-      console.error('Error logging out:', err);
-    }
   };
 
   // Auth UI Modal
@@ -106,17 +89,11 @@ export const AuthContextProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, authReady }}>
+    <AuthContext.Provider value={{ user, authReady, signOut }}>
       {children}
       <AuthModal />
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthContextProvider');
-  }
-  return context;
-}; 
+export const useAuth = () => useContext(AuthContext); 

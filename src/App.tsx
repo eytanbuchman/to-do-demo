@@ -1,15 +1,15 @@
 import { Toaster } from 'react-hot-toast';
 import { AuthContextProvider } from './contexts/AuthContext';
-import { Todo } from './components/Todo';
 import { LandingPage } from './components/LandingPage';
-import { Settings } from './components/Settings';
-import { Navigation, NavigationTab } from './components/Navigation';
+import Header from './components/Header';
+import TaskList from './components/TaskList';
+import Categories from './components/Categories';
 import { useAuth } from './contexts/AuthContext';
 import { useState } from 'react';
 
 const AppContent = () => {
   const { user, authReady } = useAuth();
-  const [activeTab, setActiveTab] = useState<NavigationTab>('missions');
+  const [currentPage, setCurrentPage] = useState('tasks');
 
   if (!authReady) {
     return (
@@ -27,16 +27,10 @@ const AppContent = () => {
 
   return (
     <div className="min-h-screen bg-dark-950">
-      <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
+      <Header />
       <main className="min-h-[calc(100vh-4rem)]">
-        {activeTab === 'missions' && <Todo />}
-        {activeTab === 'settings' && <Settings />}
-        {activeTab === 'categories' && (
-          <div className="container-custom py-8">
-            <h1 className="text-2xl font-bold text-white mb-6">Categories</h1>
-            <p className="text-dark-400">Category management coming soon...</p>
-          </div>
-        )}
+        {currentPage === 'tasks' && <TaskList />}
+        {currentPage === 'categories' && <Categories />}
       </main>
     </div>
   );
