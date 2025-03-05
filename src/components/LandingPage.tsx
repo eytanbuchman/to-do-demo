@@ -48,20 +48,20 @@ export const LandingPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-dark-950 to-dark-900">
       {/* Hero Section */}
-      <div className="container-custom pt-20 pb-16 text-center">
-        <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">
-          <span className="text-primary-400">Task</span>
-          <span className="text-secondary-400">Rebel</span>
+      <div className="container mx-auto px-4 pt-20 pb-16 text-center">
+        <h1 className="text-4xl md:text-6xl font-bold mb-6">
+          <span className="logo-gradient logo-glow inline-block">Task</span>
+          <span className="logo-gradient logo-glow inline-block">Rebel</span>
         </h1>
-        <p className="text-xl md:text-2xl text-dark-100 mb-8 max-w-2xl mx-auto">
+        <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-2xl mx-auto">
           The anti-todo list for rebels who get shit done.
           <br />
-          <span className="text-dark-300">No productivity porn. Just results.</span>
+          <span className="text-gray-400">No productivity porn. Just results.</span>
         </p>
         <button
           onClick={login}
-          className="btn btn-primary text-lg px-8 py-4 shadow-lg hover:shadow-primary-500/20 
-                   hover:transform hover:-translate-y-1 transition-all duration-300"
+          className="bg-rebel-red hover:bg-rebel-red-light text-white text-lg px-8 py-4 rounded-lg shadow-lg 
+                   hover:shadow-rebel-red/20 hover:transform hover:-translate-y-1 transition-all duration-300"
         >
           Join the Rebellion
         </button>
@@ -69,25 +69,25 @@ export const LandingPage: React.FC = () => {
         <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
           <div className="bg-dark-800/50 backdrop-blur-sm rounded-lg p-6 border border-dark-700">
             <div className="text-2xl mb-2">🚀</div>
-            <h3 className="text-primary-400 font-semibold mb-2">Deploy Missions</h3>
-            <p className="text-dark-200">Not tasks. Because saving the world starts with better terminology.</p>
+            <h3 className="text-rebel-red font-semibold mb-2">Deploy Missions</h3>
+            <p className="text-gray-300">Not tasks. Because saving the world starts with better terminology.</p>
           </div>
           <div className="bg-dark-800/50 backdrop-blur-sm rounded-lg p-6 border border-dark-700">
             <div className="text-2xl mb-2">⚡️</div>
-            <h3 className="text-secondary-400 font-semibold mb-2">Hack the System</h3>
-            <p className="text-dark-200">Customize everything. Break the rules. Make productivity work for you.</p>
+            <h3 className="text-rebel-red font-semibold mb-2">Hack the System</h3>
+            <p className="text-gray-300">Customize everything. Break the rules. Make productivity work for you.</p>
           </div>
           <div className="bg-dark-800/50 backdrop-blur-sm rounded-lg p-6 border border-dark-700">
             <div className="text-2xl mb-2">💥</div>
-            <h3 className="text-primary-400 font-semibold mb-2">Get Shit Done</h3>
-            <p className="text-dark-200">No methodology. No guru BS. Just you, crushing your missions.</p>
+            <h3 className="text-rebel-red font-semibold mb-2">Get Shit Done</h3>
+            <p className="text-gray-300">No methodology. No guru BS. Just you, crushing your missions.</p>
           </div>
         </div>
       </div>
 
       {/* Features Section */}
       <div className="bg-dark-900/50 py-20">
-        <div className="container-custom">
+        <div className="container mx-auto px-4">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-12 text-center">
             Productivity Tools for the Rest of Us
           </h2>
@@ -97,12 +97,12 @@ export const LandingPage: React.FC = () => {
               <div
                 key={index}
                 className="bg-dark-800/30 rounded-lg p-6 border border-dark-700 
-                         hover:border-primary-500/50 transition-all duration-300
+                         hover:border-rebel-red/50 transition-all duration-300
                          hover:transform hover:-translate-y-1"
               >
-                <div className="text-primary-400 mb-4">{feature.icon}</div>
+                <div className="text-rebel-red mb-4">{feature.icon}</div>
                 <h3 className="text-white font-semibold mb-2">{feature.title}</h3>
-                <p className="text-dark-200">{feature.description}</p>
+                <p className="text-gray-300">{feature.description}</p>
               </div>
             ))}
           </div>
@@ -110,19 +110,19 @@ export const LandingPage: React.FC = () => {
       </div>
 
       {/* CTA Section */}
-      <div className="container-custom py-20 text-center">
-        <div className="bg-gradient-to-r from-primary-500/10 to-secondary-500/10 
+      <div className="container mx-auto px-4 py-20 text-center">
+        <div className="bg-gradient-to-r from-rebel-red/10 to-rebel-red-light/10 
                       rounded-lg p-8 md:p-12 backdrop-blur-sm border border-dark-700">
           <h2 className="text-2xl md:text-3xl font-bold text-white mb-6">
             Ready to Overthrow Your Todo List?
           </h2>
-          <p className="text-dark-100 mb-8 max-w-2xl mx-auto">
+          <p className="text-gray-300 mb-8 max-w-2xl mx-auto">
             Join thousands of rebels who've ditched traditional productivity tools for something that actually works.
           </p>
           <button
             onClick={login}
-            className="btn btn-primary text-lg px-8 py-4 shadow-lg hover:shadow-primary-500/20 
-                     hover:transform hover:-translate-y-1 transition-all duration-300"
+            className="bg-rebel-red hover:bg-rebel-red-light text-white text-lg px-8 py-4 rounded-lg shadow-lg 
+                     hover:shadow-rebel-red/20 hover:transform hover:-translate-y-1 transition-all duration-300"
           >
             Start Your Revolution
           </button>
@@ -131,7 +131,7 @@ export const LandingPage: React.FC = () => {
 
       {/* Footer */}
       <footer className="border-t border-dark-800 py-8">
-        <div className="container-custom text-center text-dark-400">
+        <div className="container mx-auto px-4 text-center text-gray-500">
           <p>Built by rebels, for rebels. No productivity experts were consulted in the making of this app.</p>
         </div>
       </footer>

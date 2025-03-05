@@ -1,126 +1,166 @@
-import { useEffect, useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import Task from './Task'
+import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 
-interface Task {
+interface Category {
   id: string
-  title: string
-  description: string
-  category: string
-  priority: string
-  status: string
-  due_date?: string
+  name: string
+  color: string
+  task_count: number
 }
 
-const Categories = () => {
-  const [tasks, setTasks] = useState<Task[]>([])
+export const Categories = () => {
+  const [categories, setCategories] = useState<Category[]>([])
+  const [newCategory, setNewCategory] = useState({ name: '', color: '#FF4444' })
   const [loading, setLoading] = useState(true)
-  const [categories, setCategories] = useState<{ [key: string]: Task[] }>({})
 
   useEffect(() => {
-    fetchTasks()
+    fetchCategories()
   }, [])
 
-  const fetchTasks = async () => {
+  const fetchCategories = async () => {
     try {
-      console.log('Fetching tasks for categories...')
-      const { data, error } = await supabase
+      console.log('Fetching categories...')
+      const { data: tasks, error: tasksError } = await supabase
         .from('tasks')
-        .select('*')
-        .order('category')
+        .select('category')
 
-      if (error) throw error
+      if (tasksError) throw tasksError
 
-      console.log('Fetched tasks:', data)
-      setTasks(data || [])
-      
-      // Group tasks by category
-      const groupedTasks = (data || []).reduce((acc: { [key: string]: Task[] }, task: Task) => {
-        const category = task.category || 'Uncategorized'
-        if (!acc[category]) {
-          acc[category] = []
+      // Get unique categories and count
+      const categoryCount = tasks.reduce((acc: Record<string, number>, task) => {
+        if (task.category) {
+          acc[task.category] = (acc[task.category] || 0) + 1
         }
-        acc[category].push(task)
         return acc
       }, {})
 
-      console.log('Grouped tasks:', groupedTasks)
-      setCategories(groupedTasks)
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select('*')
+
+      if (categoriesError) throw categoriesError
+
+      const categoriesWithCount = categoriesData.map((cat) => ({
+        ...cat,
+        task_count: categoryCount[cat.name] || 0
+      }))
+
+      console.log('Categories fetched:', categoriesWithCount)
+      setCategories(categoriesWithCount)
       setLoading(false)
     } catch (error) {
-      console.error('Error fetching tasks:', error)
-      toast.error('Failed to load tasks')
+      console.error('Error fetching categories:', error)
+      toast.error('Failed to load categories')
       setLoading(false)
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newCategory.name.trim()) {
+      toast.error('Category name is required')
+      return
+    }
+
     try {
+      console.log('Adding new category:', newCategory)
       const { error } = await supabase
-        .from('tasks')
+        .from('categories')
+        .insert([newCategory])
+
+      if (error) throw error
+
+      toast.success('Category added successfully!')
+      setNewCategory({ name: '', color: '#FF4444' })
+      fetchCategories()
+    } catch (error) {
+      console.error('Error adding category:', error)
+      toast.error('Failed to add category')
+    }
+  }
+
+  const handleDeleteCategory = async (id: string) => {
+    try {
+      console.log('Deleting category:', id)
+      const { error } = await supabase
+        .from('categories')
         .delete()
         .eq('id', id)
 
       if (error) throw error
 
-      fetchTasks()
-      toast.success('Task deleted successfully!')
+      toast.success('Category deleted successfully!')
+      fetchCategories()
     } catch (error) {
-      console.error('Error deleting task:', error)
-      toast.error('Failed to delete task')
-    }
-  }
-
-  const handleUpdate = async (updatedTask: Task) => {
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .update(updatedTask)
-        .eq('id', updatedTask.id)
-
-      if (error) throw error
-
-      fetchTasks()
-      toast.success('Task updated successfully!')
-    } catch (error) {
-      console.error('Error updating task:', error)
-      toast.error('Failed to update task')
+      console.error('Error deleting category:', error)
+      toast.error('Failed to delete category')
     }
   }
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-white">Loading categories...</div>
+      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+        <div className="animate-pulse text-dark-400">Loading categories...</div>
       </div>
     )
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-white mb-8">Task Categories</h1>
-      {Object.entries(categories).length === 0 ? (
-        <div className="text-gray-400 text-center">No tasks found. Start by adding a task with a category!</div>
-      ) : (
-        Object.entries(categories).map(([category, categoryTasks]) => (
-          <div key={category} className="mb-8">
-            <h2 className="text-2xl font-bold text-rebel-red mb-4">{category}</h2>
-            <div className="space-y-4">
-              {categoryTasks.map(task => (
-                <Task
-                  key={task.id}
-                  task={task}
-                  onDelete={handleDelete}
-                  onUpdate={handleUpdate}
-                />
-              ))}
+      <div className="bg-dark-800 rounded-lg p-6 mb-8">
+        <h2 className="text-2xl font-bold text-white mb-6">Add New Category</h2>
+        <form onSubmit={handleAddCategory} className="flex gap-4">
+          <input
+            type="text"
+            value={newCategory.name}
+            onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+            placeholder="Category name"
+            className="flex-1 bg-dark-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-rebel-red"
+          />
+          <input
+            type="color"
+            value={newCategory.color}
+            onChange={(e) => setNewCategory({ ...newCategory, color: e.target.value })}
+            className="w-12 h-10 rounded cursor-pointer"
+          />
+          <button
+            type="submit"
+            className="bg-rebel-red hover:bg-rebel-red-light text-white px-6 py-2 rounded-lg flex items-center gap-2 transition-colors"
+          >
+            <PlusIcon className="w-5 h-5" />
+            Add
+          </button>
+        </form>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {categories.map((category) => (
+          <div
+            key={category.id}
+            className="bg-dark-800 rounded-lg p-6 flex items-center justify-between"
+            style={{ borderLeft: `4px solid ${category.color}` }}
+          >
+            <div>
+              <h3 className="text-lg font-semibold text-white">{category.name}</h3>
+              <p className="text-dark-400">{category.task_count} tasks</p>
             </div>
+            <button
+              onClick={() => handleDeleteCategory(category.id)}
+              className="text-dark-400 hover:text-red-400 transition-colors"
+            >
+              <TrashIcon className="w-5 h-5" />
+            </button>
           </div>
-        ))
+        ))}
+      </div>
+
+      {categories.length === 0 && (
+        <div className="text-center text-dark-400 mt-8">
+          No categories yet. Add your first category above!
+        </div>
       )}
     </div>
   )
-}
-
-export default Categories 
+} 

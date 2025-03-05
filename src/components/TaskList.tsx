@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { TaskForm } from './TaskForm'
 import Task from './Task'
-import TaskForm from './TaskForm'
+import { PlusIcon, FunnelIcon } from '@heroicons/react/24/outline'
 import toast from 'react-hot-toast'
 
-interface Task {
+interface TaskType {
   id: string
   title: string
   description: string
@@ -14,50 +15,78 @@ interface Task {
   due_date?: string
 }
 
-interface Filters {
-  status: string
-  priority: string
-  category: string
-}
-
-const TaskList = () => {
-  const [tasks, setTasks] = useState<Task[]>([])
+export const TaskList = () => {
+  const [tasks, setTasks] = useState<TaskType[]>([])
   const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState<Filters>({
-    status: '',
+  const [showNewTaskForm, setShowNewTaskForm] = useState(false)
+  const [filters, setFilters] = useState({
     priority: '',
-    category: ''
+    category: '',
+    status: ''
   })
   const [categories, setCategories] = useState<string[]>([])
 
   useEffect(() => {
     fetchTasks()
+    fetchCategories()
   }, [])
+
+  const fetchCategories = async () => {
+    try {
+      console.log('Fetching categories...')
+      const { data, error } = await supabase
+        .from('categories')
+        .select('name')
+
+      if (error) throw error
+
+      setCategories(data.map(c => c.name))
+      console.log('Categories fetched:', data)
+    } catch (error) {
+      console.error('Error fetching categories:', error)
+      toast.error('Failed to load categories')
+    }
+  }
 
   const fetchTasks = async () => {
     try {
-      console.log('Fetching tasks...')
-      const { data, error } = await supabase
+      console.log('Fetching tasks with filters:', filters)
+      let query = supabase
         .from('tasks')
         .select('*')
         .order('created_at', { ascending: false })
 
+      if (filters.priority) {
+        query = query.eq('priority', filters.priority)
+      }
+      if (filters.category) {
+        query = query.eq('category', filters.category)
+      }
+      if (filters.status) {
+        query = query.eq('status', filters.status)
+      }
+
+      const { data, error } = await query
+
       if (error) throw error
 
-      console.log('Fetched tasks:', data)
+      console.log('Tasks fetched:', data)
       setTasks(data || [])
-      
-      // Extract unique categories
-      const uniqueCategories = Array.from(new Set((data || []).map((task: Task) => task.category)))
-      console.log('Unique categories:', uniqueCategories)
-      setCategories(uniqueCategories.filter(Boolean))
-      
       setLoading(false)
     } catch (error) {
       console.error('Error fetching tasks:', error)
       toast.error('Failed to load tasks')
       setLoading(false)
     }
+  }
+
+  useEffect(() => {
+    fetchTasks()
+  }, [filters])
+
+  const handleTaskAdded = () => {
+    fetchTasks()
+    setShowNewTaskForm(false)
   }
 
   const handleDelete = async (id: string) => {
@@ -69,7 +98,7 @@ const TaskList = () => {
 
       if (error) throw error
 
-      setTasks(tasks.filter(task => task.id !== id))
+      fetchTasks()
       toast.success('Task deleted successfully!')
     } catch (error) {
       console.error('Error deleting task:', error)
@@ -77,56 +106,53 @@ const TaskList = () => {
     }
   }
 
-  const handleUpdate = (updatedTask: Task) => {
-    setTasks(tasks.map(task => task.id === updatedTask.id ? updatedTask : task))
-  }
+  const handleUpdate = async (updatedTask: TaskType) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update(updatedTask)
+        .eq('id', updatedTask.id)
 
-  const handleFilterChange = (filterType: keyof Filters, value: string) => {
-    console.log('Updating filter:', filterType, value)
-    setFilters(prev => ({ ...prev, [filterType]: value }))
-  }
+      if (error) throw error
 
-  const filteredTasks = tasks.filter(task => {
-    const statusMatch = !filters.status || task.status === filters.status
-    const priorityMatch = !filters.priority || task.priority === filters.priority
-    const categoryMatch = !filters.category || task.category === filters.category
-    return statusMatch && priorityMatch && categoryMatch
-  })
+      fetchTasks()
+      toast.success('Task updated successfully!')
+    } catch (error) {
+      console.error('Error updating task:', error)
+      toast.error('Failed to update task')
+    }
+  }
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-white">Loading tasks...</div>
+      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+        <div className="animate-pulse text-dark-400">Loading tasks...</div>
       </div>
     )
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <TaskForm onTaskAdded={fetchTasks} />
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-bold text-white">Your Missions</h1>
+        <button
+          onClick={() => setShowNewTaskForm(!showNewTaskForm)}
+          className="bg-rebel-red hover:bg-rebel-red-light text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+        >
+          <PlusIcon className="w-5 h-5" />
+          New Mission
+        </button>
       </div>
 
-      <div className="mb-8 p-4 bg-dark-800 rounded-lg">
-        <h2 className="text-xl font-bold text-white mb-4">Filter Tasks</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <select
-            value={filters.status}
-            onChange={(e) => handleFilterChange('status', e.target.value)}
-            className="bg-dark-700 text-white p-2 rounded"
-          >
-            <option value="">All Status</option>
-            <option value="todo">To Do</option>
-            <option value="in_progress">In Progress</option>
-            <option value="done">Done</option>
-          </select>
-
+      <div className="bg-dark-800 rounded-lg p-4 mb-6">
+        <div className="flex items-center gap-4">
+          <FunnelIcon className="w-5 h-5 text-dark-400" />
           <select
             value={filters.priority}
-            onChange={(e) => handleFilterChange('priority', e.target.value)}
-            className="bg-dark-700 text-white p-2 rounded"
+            onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
+            className="bg-dark-700 text-white rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rebel-red"
           >
-            <option value="">All Priority</option>
+            <option value="">All Priorities</option>
             <option value="low">Low</option>
             <option value="medium">Medium</option>
             <option value="high">High</option>
@@ -134,22 +160,54 @@ const TaskList = () => {
 
           <select
             value={filters.category}
-            onChange={(e) => handleFilterChange('category', e.target.value)}
-            className="bg-dark-700 text-white p-2 rounded"
+            onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+            className="bg-dark-700 text-white rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rebel-red"
           >
             <option value="">All Categories</option>
-            {categories.map(category => (
-              <option key={category} value={category}>{category}</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
             ))}
+          </select>
+
+          <select
+            value={filters.status}
+            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            className="bg-dark-700 text-white rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-rebel-red"
+          >
+            <option value="">All Statuses</option>
+            <option value="todo">To Do</option>
+            <option value="in_progress">In Progress</option>
+            <option value="done">Done</option>
           </select>
         </div>
       </div>
 
+      {showNewTaskForm && (
+        <div className="fixed inset-0 bg-dark-900/80 flex items-center justify-center p-4 z-50">
+          <div className="bg-dark-800 p-6 rounded-lg shadow-xl max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-white">New Mission</h2>
+              <button 
+                onClick={() => setShowNewTaskForm(false)}
+                className="text-dark-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            <TaskForm onTaskAdded={handleTaskAdded} />
+          </div>
+        </div>
+      )}
+
       <div className="space-y-4">
-        {filteredTasks.length === 0 ? (
-          <div className="text-gray-400 text-center">No tasks found. Try adjusting your filters or add a new task!</div>
+        {tasks.length === 0 ? (
+          <div className="text-center text-dark-400 py-8">
+            No tasks found. Start by adding a new mission!
+          </div>
         ) : (
-          filteredTasks.map(task => (
+          tasks.map((task) => (
             <Task
               key={task.id}
               task={task}
@@ -161,6 +219,4 @@ const TaskList = () => {
       </div>
     </div>
   )
-}
-
-export default TaskList 
+} 

@@ -8,12 +8,14 @@ interface AuthContextType {
   user: User | null;
   authReady: boolean;
   signOut: () => Promise<void>;
+  login: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   authReady: false,
   signOut: async () => {},
+  login: () => {},
 });
 
 export const AuthContextProvider = ({ children }: { children: React.ReactNode }) => {
@@ -32,6 +34,9 @@ export const AuthContextProvider = ({ children }: { children: React.ReactNode })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setAuthReady(true);
+      if (session?.user) {
+        setShowAuth(false); // Close auth modal when user is logged in
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -82,6 +87,8 @@ export const AuthContextProvider = ({ children }: { children: React.ReactNode })
             }}
             providers={['github', 'google']}
             theme="dark"
+            redirectTo={window.location.origin + '/reset-password'}
+            view="sign_in"
           />
         </div>
       </div>
@@ -89,7 +96,7 @@ export const AuthContextProvider = ({ children }: { children: React.ReactNode })
   };
 
   return (
-    <AuthContext.Provider value={{ user, authReady, signOut }}>
+    <AuthContext.Provider value={{ user, authReady, signOut, login }}>
       {children}
       <AuthModal />
     </AuthContext.Provider>

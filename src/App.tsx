@@ -2,8 +2,9 @@ import { Toaster } from 'react-hot-toast';
 import { AuthContextProvider } from './contexts/AuthContext';
 import { LandingPage } from './components/LandingPage';
 import Header from './components/Header';
-import TaskList from './components/TaskList';
-import Categories from './components/Categories';
+import { TaskList } from './components/TaskList';
+import { Categories } from './components/Categories';
+import { Analytics } from './components/Analytics';
 import { useAuth } from './contexts/AuthContext';
 import { useState } from 'react';
 
@@ -27,10 +28,11 @@ const AppContent = () => {
 
   return (
     <div className="min-h-screen bg-dark-950">
-      <Header />
+      <Header onNavigate={setCurrentPage} currentPage={currentPage} />
       <main className="min-h-[calc(100vh-4rem)]">
         {currentPage === 'tasks' && <TaskList />}
         {currentPage === 'categories' && <Categories />}
+        {currentPage === 'analytics' && <Analytics />}
       </main>
     </div>
   );
