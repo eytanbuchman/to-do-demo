@@ -3,6 +3,8 @@ export default {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
+    "node_modules/@supabase/auth-ui-shared/**/*.{js,ts,jsx,tsx}",
+    "node_modules/@supabase/auth-ui-react/**/*.{js,ts,jsx,tsx}"
   ],
   theme: {
     extend: {

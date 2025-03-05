@@ -1,205 +1,196 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../config/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import toast from 'react-hot-toast';
-import { TodoItem } from '../types/todo';
+import { supabase } from '../config/supabase';
 import { TaskForm } from './TaskForm';
 import { TaskItem } from './TaskItem';
+import { PlusIcon } from '@heroicons/react/24/outline';
+import toast from 'react-hot-toast';
+
+interface Todo {
+  id: string;
+  title: string;
+  completed: boolean;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  description?: string;
+  due_date?: string;
+  tags: string[];
+}
+
+interface Filters {
+  priority: string;
+  status: string;
+  dueDate: string;
+}
 
 export const Todo: React.FC = () => {
-  const [todos, setTodos] = useState<TodoItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [filters, setFilters] = useState<Filters>({
+    priority: '',
+    status: '',
+    dueDate: '',
+  });
 
   useEffect(() => {
     if (user) {
-      console.log('Fetching missions for rebel:', user.id);
       fetchTodos();
     }
   }, [user]);
 
   const fetchTodos = async () => {
     try {
-      console.log('Fetching missions from base');
-      const { data, error } = await supabase
+      console.log('Fetching todos for user:', user?.id);
+      let query = supabase
         .from('todos')
         .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
+        .eq('user_id', user?.id);
 
-      if (error) {
-        console.error('Error fetching missions:', error);
-        toast.error('Mission data retrieval failed!');
-        return;
+      // Apply filters
+      if (filters.priority) {
+        query = query.eq('priority', filters.priority);
+      }
+      if (filters.status === 'completed') {
+        query = query.eq('completed', true);
+      } else if (filters.status === 'active') {
+        query = query.eq('completed', false);
+      }
+      if (filters.dueDate === 'today') {
+        const today = new Date().toISOString().split('T')[0];
+        query = query.eq('due_date', today);
+      } else if (filters.dueDate === 'week') {
+        const today = new Date();
+        const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+        query = query.lte('due_date', nextWeek.toISOString());
+      } else if (filters.dueDate === 'overdue') {
+        const today = new Date().toISOString();
+        query = query.lt('due_date', today);
       }
 
-      console.log('Missions retrieved successfully:', data);
+      const { data, error } = await query.order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      console.log('Fetched todos:', data);
       setTodos(data || []);
     } catch (error) {
-      console.error('Unexpected error fetching missions:', error);
-      toast.error('System malfunction during data retrieval!');
-    } finally {
-      setLoading(false);
+      console.error('Error fetching todos:', error);
+      toast.error('Failed to load missions');
     }
   };
 
-  const addTodo = async (task: Partial<TodoItem>) => {
-    if (!user) return;
-
+  const addTodo = async (title: string) => {
     try {
-      console.log('Deploying new mission:', task);
       const { data, error } = await supabase
         .from('todos')
         .insert([
           {
-            ...task,
-            user_id: user.id,
+            title,
+            user_id: user?.id,
             completed: false,
+            priority: 'MEDIUM',
           },
         ])
         .select()
         .single();
 
       if (error) {
-        console.error('Error deploying mission:', error);
-        toast.error('Mission deployment failed!');
-        return;
+        throw error;
       }
 
-      console.log('Mission deployed successfully:', data);
+      console.log('Added todo:', data);
       setTodos([data, ...todos]);
-      toast.success('Mission deployed! 🚀');
+      toast.success('Mission created');
     } catch (error) {
-      console.error('Unexpected error deploying mission:', error);
-      toast.error('System malfunction during deployment!');
+      console.error('Error adding todo:', error);
+      toast.error('Failed to create mission');
     }
   };
 
   const toggleTodo = async (id: string, completed: boolean) => {
     try {
-      console.log('Updating mission status:', { id, completed });
       const { error } = await supabase
         .from('todos')
-        .update({ completed: !completed })
+        .update({ completed })
         .eq('id', id);
 
       if (error) {
-        console.error('Error updating mission:', error);
-        toast.error('Mission status update failed!');
-        return;
+        throw error;
       }
 
       setTodos(todos.map(todo => 
-        todo.id === id ? { ...todo, completed: !completed } : todo
-      ));
-      console.log('Mission status updated');
-      if (!completed) {
-        toast.success('Mission accomplished! 🎯');
-      }
-    } catch (error) {
-      console.error('Unexpected error updating mission:', error);
-      toast.error('System glitch during status update!');
-    }
-  };
-
-  const toggleSubtask = async (taskId: string, subtaskId: string, completed: boolean) => {
-    try {
-      const task = todos.find(t => t.id === taskId);
-      if (!task) return;
-
-      const updatedSubtasks = task.subtasks.map(st =>
-        st.id === subtaskId ? { ...st, completed: !completed } : st
-      );
-
-      const { error } = await supabase
-        .from('todos')
-        .update({ subtasks: updatedSubtasks })
-        .eq('id', taskId);
-
-      if (error) {
-        console.error('Error updating objective:', error);
-        toast.error('Objective status update failed!');
-        return;
-      }
-
-      setTodos(todos.map(todo =>
-        todo.id === taskId ? { ...todo, subtasks: updatedSubtasks } : todo
+        todo.id === id ? { ...todo, completed } : todo
       ));
       
-      if (!completed) {
-        toast.success('Objective completed! 🎯');
-      }
+      toast.success(completed ? 'Mission accomplished!' : 'Mission reactivated');
     } catch (error) {
-      console.error('Unexpected error updating objective:', error);
-      toast.error('System glitch during objective update!');
+      console.error('Error toggling todo:', error);
+      toast.error('Failed to update mission');
     }
   };
 
   const deleteTodo = async (id: string) => {
     try {
-      console.log('Terminating mission:', id);
       const { error } = await supabase
         .from('todos')
         .delete()
         .eq('id', id);
 
       if (error) {
-        console.error('Error terminating mission:', error);
-        toast.error('Mission termination failed!');
-        return;
+        throw error;
       }
 
       setTodos(todos.filter(todo => todo.id !== id));
-      console.log('Mission terminated successfully');
-      toast.success('Mission terminated! 💥');
+      toast.success('Mission aborted');
     } catch (error) {
-      console.error('Unexpected error terminating mission:', error);
-      toast.error('System malfunction during termination!');
+      console.error('Error deleting todo:', error);
+      toast.error('Failed to delete mission');
     }
   };
 
-  if (!user) {
-    return (
-      <div className="container-custom py-16 text-center">
-        <h2 className="text-2xl font-semibold text-dark-900 mb-4">
-          Welcome to TaskRebel HQ
-        </h2>
-        <p className="text-dark-600 mb-8">
-          Join the rebellion against boring productivity! Sign in to start your missions.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="container-custom py-8">
-      <TaskForm onSubmit={addTodo} />
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-bold text-white">Your Missions</h1>
+        <button
+          onClick={() => setShowForm(true)}
+          className="btn btn-primary flex items-center space-x-2"
+        >
+          <PlusIcon className="w-5 h-5" />
+          <span>New Mission</span>
+        </button>
+      </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-pulse text-dark-400">
-            Retrieving mission data...
+      {/* Task Form Modal */}
+      {showForm && (
+        <TaskForm
+          onSubmit={(title) => {
+            addTodo(title);
+            setShowForm(false);
+          }}
+          onClose={() => setShowForm(false)}
+        />
+      )}
+
+      {/* Task List */}
+      <div className="space-y-4">
+        {todos.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-dark-400">No missions yet. Time to start your rebellion!</p>
           </div>
-        </div>
-      ) : todos.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-dark-500">
-            No active missions. Time to start the rebellion!
-          </p>
-        </div>
-      ) : (
-        <ul className="space-y-4 mt-8">
-          {todos.map((todo) => (
+        ) : (
+          todos.map(todo => (
             <TaskItem
               key={todo.id}
               todo={todo}
               onToggle={toggleTodo}
               onDelete={deleteTodo}
-              onToggleSubtask={toggleSubtask}
             />
-          ))}
-        </ul>
-      )}
+          ))
+        )}
+      </div>
     </div>
   );
 }; 

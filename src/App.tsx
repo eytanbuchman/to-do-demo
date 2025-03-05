@@ -2,40 +2,14 @@ import { Toaster } from 'react-hot-toast';
 import { AuthContextProvider } from './contexts/AuthContext';
 import { Todo } from './components/Todo';
 import { LandingPage } from './components/LandingPage';
+import { Settings } from './components/Settings';
+import { Navigation, NavigationTab } from './components/Navigation';
 import { useAuth } from './contexts/AuthContext';
-
-const Header = () => {
-  const { user, login, logout } = useAuth();
-
-  if (!user) return null;
-
-  return (
-    <header className="header">
-      <div className="container-custom h-16 flex justify-between items-center">
-        <h1 className="text-xl font-semibold text-dark-900">
-          <span className="text-primary-500">Task</span>
-          <span className="text-secondary-500">Rebel</span>
-        </h1>
-        <div>
-          <div className="flex items-center gap-6">
-            <span className="text-sm text-dark-600">
-              {user.email}
-            </span>
-            <button
-              onClick={logout}
-              className="btn btn-secondary text-sm"
-            >
-              Escape
-            </button>
-          </div>
-        </div>
-      </div>
-    </header>
-  );
-};
+import { useState } from 'react';
 
 const AppContent = () => {
   const { user, authReady } = useAuth();
+  const [activeTab, setActiveTab] = useState<NavigationTab>('missions');
 
   if (!authReady) {
     return (
@@ -52,10 +26,17 @@ const AppContent = () => {
   }
 
   return (
-    <div className="min-h-screen bg-dark-50">
-      <Header />
-      <main>
-        <Todo />
+    <div className="min-h-screen bg-dark-950">
+      <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
+      <main className="min-h-[calc(100vh-4rem)]">
+        {activeTab === 'missions' && <Todo />}
+        {activeTab === 'settings' && <Settings />}
+        {activeTab === 'categories' && (
+          <div className="container-custom py-8">
+            <h1 className="text-2xl font-bold text-white mb-6">Categories</h1>
+            <p className="text-dark-400">Category management coming soon...</p>
+          </div>
+        )}
       </main>
     </div>
   );
@@ -69,9 +50,21 @@ function App() {
         position="bottom-right"
         toastOptions={{
           style: {
-            background: '#fff',
-            color: '#1a1a1a',
+            background: '#262626',
+            color: '#fff',
             boxShadow: '0 2px 4px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.1)',
+          },
+          success: {
+            iconTheme: {
+              primary: '#0090ff',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ff4444',
+              secondary: '#fff',
+            },
           },
         }}
       />

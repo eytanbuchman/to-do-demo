@@ -1,164 +1,108 @@
-import React, { useState } from 'react';
-import { TodoItem, SubTask } from '../types/todo';
-import {
-  TrashIcon,
-  CheckIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
-  ClockIcon,
-  TagIcon,
-} from '@heroicons/react/24/outline';
-import { format } from 'date-fns';
+import React from 'react';
+import { TrashIcon, CheckIcon } from '@heroicons/react/24/outline';
 
-interface TaskItemProps {
-  todo: TodoItem;
-  onToggle: (id: string, completed: boolean) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
-  onToggleSubtask: (taskId: string, subtaskId: string, completed: boolean) => Promise<void>;
+interface Todo {
+  id: string;
+  title: string;
+  completed: boolean;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  description?: string;
+  due_date?: string;
+  tags: string[];
 }
 
-const getPriorityColor = (priority: TodoItem['priority']) => {
-  switch (priority) {
-    case 'CRITICAL':
-      return 'text-red-500';
-    case 'HIGH':
-      return 'text-orange-500';
-    case 'MEDIUM':
-      return 'text-yellow-500';
-    case 'LOW':
-      return 'text-blue-500';
-    default:
-      return 'text-dark-500';
-  }
-};
+interface TaskItemProps {
+  todo: Todo;
+  onToggle: (id: string, completed: boolean) => void;
+  onDelete: (id: string) => void;
+}
 
-const getPriorityLabel = (priority: TodoItem['priority']) => {
-  switch (priority) {
-    case 'CRITICAL':
-      return 'Critical Mission';
-    case 'HIGH':
-      return 'Priority Target';
-    case 'MEDIUM':
-      return 'Standard Mission';
-    case 'LOW':
-      return 'Side Quest';
-  }
-};
+export const TaskItem: React.FC<TaskItemProps> = ({ todo, onToggle, onDelete }) => {
+  const priorityColors = {
+    LOW: 'bg-blue-500',
+    MEDIUM: 'bg-yellow-500',
+    HIGH: 'bg-orange-500',
+    CRITICAL: 'bg-red-500',
+  };
 
-export const TaskItem: React.FC<TaskItemProps> = ({
-  todo,
-  onToggle,
-  onDelete,
-  onToggleSubtask,
-}) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const priorityLabels = {
+    LOW: 'Side Quest',
+    MEDIUM: 'Regular Mission',
+    HIGH: 'Critical Mission',
+    CRITICAL: 'Boss Battle',
+  };
 
   return (
-    <div className="todo-item group">
-      <div className="flex-1">
-        <div className="flex items-center gap-4">
+    <div className={`bg-dark-800 rounded-lg p-4 shadow-lg transition-all duration-200
+                    ${todo.completed ? 'opacity-75' : 'hover:transform hover:-translate-y-1'}`}>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-4 flex-1">
+          {/* Checkbox */}
           <button
-            onClick={() => onToggle(todo.id, todo.completed)}
-            className={`todo-checkbox ${
-              todo.completed ? 'bg-primary-500 border-primary-500' : 'border-dark-200'
-            }`}
+            onClick={() => onToggle(todo.id, !todo.completed)}
+            className={`flex-shrink-0 w-6 h-6 rounded border-2 transition-all duration-200
+                       ${todo.completed 
+                         ? 'bg-primary-500 border-primary-500' 
+                         : 'border-dark-400 hover:border-primary-400'}`}
           >
-            {todo.completed && <CheckIcon className="w-4 h-4 text-white" />}
+            {todo.completed && (
+              <CheckIcon className="w-5 h-5 text-white" />
+            )}
           </button>
-          
+
+          {/* Content */}
           <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <span className={`todo-text ${todo.completed ? 'todo-text-completed' : ''}`}>
-                {todo.title}
-              </span>
-              {todo.due_date && (
-                <span className="text-sm text-dark-500 flex items-center gap-1">
-                  <ClockIcon className="w-4 h-4" />
-                  {format(new Date(todo.due_date), 'MMM d, h:mm a')}
-                </span>
-              )}
-            </div>
+            <h3 className={`font-medium transition-all duration-200
+                          ${todo.completed 
+                            ? 'text-dark-400 line-through' 
+                            : 'text-white'}`}>
+              {todo.title}
+            </h3>
             
-            {(todo.tags.length > 0 || todo.priority || todo.description || todo.subtasks.length > 0) && (
-              <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="flex items-center gap-1 text-sm text-dark-400 hover:text-dark-600 mt-1"
-              >
-                {isExpanded ? (
-                  <ChevronUpIcon className="w-4 h-4" />
-                ) : (
-                  <ChevronDownIcon className="w-4 h-4" />
-                )}
-                {isExpanded ? 'Less' : 'More'} details
-              </button>
-            )}
-          </div>
-        </div>
+            {/* Meta information */}
+            <div className="mt-2 flex flex-wrap gap-2">
+              {/* Priority Badge */}
+              <span className={`px-2 py-1 rounded-full text-xs font-medium text-white
+                              ${priorityColors[todo.priority]}`}>
+                {priorityLabels[todo.priority]}
+              </span>
 
-        {isExpanded && (
-          <div className="mt-4 ml-10 space-y-3">
-            {todo.description && (
-              <p className="text-sm text-dark-600">{todo.description}</p>
-            )}
-
-            <div className="flex flex-wrap gap-2">
-              {todo.priority && (
-                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md 
-                                bg-opacity-10 text-sm ${getPriorityColor(todo.priority)}`}>
-                  {getPriorityLabel(todo.priority)}
+              {/* Due Date */}
+              {todo.due_date && (
+                <span className="text-xs text-dark-400">
+                  Due: {new Date(todo.due_date).toLocaleDateString()}
                 </span>
               )}
-              
-              {todo.tags.map((tag) => (
+
+              {/* Tags */}
+              {todo.tags?.map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md 
-                           bg-primary-100 text-primary-700 text-sm"
+                  className="px-2 py-1 rounded-full text-xs font-medium
+                           bg-dark-700 text-dark-300"
                 >
-                  <TagIcon className="w-3 h-3" />
                   {tag}
                 </span>
               ))}
             </div>
 
-            {todo.subtasks.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-dark-700">Mission Objectives</h4>
-                {todo.subtasks.map((subtask) => (
-                  <div key={subtask.id} className="flex items-center gap-2">
-                    <button
-                      onClick={() => onToggleSubtask(todo.id, subtask.id, subtask.completed)}
-                      className={`w-4 h-4 border-2 rounded flex items-center justify-center
-                                transition-colors duration-200 ${
-                                  subtask.completed
-                                    ? 'bg-primary-500 border-primary-500'
-                                    : 'border-dark-200'
-                                }`}
-                    >
-                      {subtask.completed && <CheckIcon className="w-3 h-3 text-white" />}
-                    </button>
-                    <span
-                      className={`text-sm ${
-                        subtask.completed ? 'line-through text-dark-400' : 'text-dark-600'
-                      }`}
-                    >
-                      {subtask.title}
-                    </span>
-                  </div>
-                ))}
-              </div>
+            {/* Description */}
+            {todo.description && (
+              <p className="mt-2 text-sm text-dark-400">
+                {todo.description}
+              </p>
             )}
           </div>
-        )}
-      </div>
+        </div>
 
-      <button
-        onClick={() => onDelete(todo.id)}
-        className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 
-                 text-dark-400 hover:text-red-500"
-      >
-        <TrashIcon className="w-5 h-5" />
-      </button>
+        {/* Actions */}
+        <button
+          onClick={() => onDelete(todo.id)}
+          className="text-dark-400 hover:text-red-400 transition-colors duration-200"
+        >
+          <TrashIcon className="w-5 h-5" />
+        </button>
+      </div>
     </div>
   );
 }; 
