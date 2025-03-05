@@ -1,0 +1,51 @@
+@import url('https://rsms.me/inter/inter.css');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-dark-50 text-dark-900 min-h-screen font-sans antialiased;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-6 py-3 rounded-lg font-medium transition-all duration-200 text-sm tracking-wide;
+  }
+  .btn-primary {
+    @apply bg-primary-500 text-white hover:bg-primary-600 shadow-sm hover:shadow-md;
+  }
+  .btn-secondary {
+    @apply bg-dark-100 text-dark-900 hover:bg-dark-200 shadow-sm;
+  }
+  .input {
+    @apply w-full px-4 py-3 border-2 border-dark-200 rounded-lg 
+           focus:outline-none focus:border-primary-500 focus:ring-2 
+           focus:ring-primary-100 transition-all duration-200
+           bg-white text-dark-900 placeholder-dark-400;
+  }
+  .todo-item {
+    @apply flex items-center justify-between p-4 bg-white rounded-lg
+           shadow-centra transition-all duration-200
+           hover:shadow-lg hover:translate-y-[-2px];
+  }
+  .todo-checkbox {
+    @apply w-6 h-6 border-2 rounded-md transition-all duration-200
+           flex items-center justify-center
+           hover:border-primary-400 focus:outline-none focus:ring-2
+           focus:ring-primary-100;
+  }
+  .todo-text {
+    @apply text-dark-800 text-base transition-all duration-200;
+  }
+  .todo-text-completed {
+    @apply line-through text-dark-400;
+  }
+  .header {
+    @apply bg-white shadow-centra backdrop-blur-sm bg-white/80 sticky top-0 z-50;
+  }
+  .container-custom {
+    @apply max-w-3xl mx-auto px-4 sm:px-6;
+  }
+}
