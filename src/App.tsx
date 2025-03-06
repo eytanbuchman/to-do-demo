@@ -9,6 +9,7 @@ import { Analytics } from './components/Analytics'
 import { Account } from './components/Account'
 import { LandingPage } from './components/LandingPage'
 import { ResetPassword } from './components/ResetPassword'
+import { AuthCallback } from './components/AuthCallback'
 
 function App() {
   const [session, setSession] = useState<any>(null)
@@ -62,6 +63,7 @@ function App() {
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/account" element={<Account />} />
                 <Route path="/" element={<Navigate to="/tasks" replace />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
               </Routes>
             </main>
           </>

@@ -26,6 +26,7 @@ interface ActivityStats {
 export const Analytics = () => {
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [taskStats, setTaskStats] = useState<TaskStats | null>(null)
   const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([])
   const [activityStats, setActivityStats] = useState<ActivityStats[]>([])
@@ -39,53 +40,151 @@ export const Analytics = () => {
   const fetchAnalytics = async () => {
     try {
       setLoading(true)
+      setError(null)
       console.log('Fetching analytics for user:', user?.id)
 
-      // Fetch task completion stats
-      const { data: taskData, error: taskError } = await supabase
-        .from('task_completion_stats')
-        .select('*')
-        .eq('user_id', user?.id)
-        .single()
-
-      if (taskError) throw taskError
-      console.log('Task stats:', taskData)
-      setTaskStats(taskData)
-
-      // Fetch category usage stats
-      const { data: categoryData, error: categoryError } = await supabase
-        .from('category_usage_stats')
+      // Fetch basic task stats directly from todos table
+      const { data: todos, error: todosError } = await supabase
+        .from('todos')
         .select('*')
         .eq('user_id', user?.id)
 
-      if (categoryError) throw categoryError
-      console.log('Category stats:', categoryData)
-      setCategoryStats(categoryData)
+      if (todosError) throw todosError
 
-      // Fetch activity stats
-      const { data: activityData, error: activityError } = await supabase
-        .from('user_activity_stats')
-        .select('*')
+      // Calculate task stats
+      const total = todos.length
+      const completed = todos.filter(t => t.completed).length
+      const overdue = todos.filter(t => {
+        if (!t.completed && t.due_date) {
+          return new Date(t.due_date) < new Date()
+        }
+        return false
+      }).length
+
+      const taskStatsData = {
+        total_tasks: total,
+        completed_tasks: completed,
+        pending_tasks: total - completed,
+        completion_rate: total > 0 ? Math.round((completed / total) * 100) : 0,
+        overdue_tasks: overdue
+      }
+      setTaskStats(taskStatsData)
+
+      // Fetch category stats
+      const { data: categories, error: categoriesError } = await supabase
+        .from('categories')
+        .select('*, task_categories!inner(todo_id)')
         .eq('user_id', user?.id)
-        .order('activity_date', { ascending: false })
-        .limit(7)
 
-      if (activityError) throw activityError
-      console.log('Activity stats:', activityData)
-      setActivityStats(activityData)
+      if (categoriesError) throw categoriesError
+
+      const categoryStatsData = await Promise.all(
+        categories.map(async (category) => {
+          const { data: taskCount } = await supabase
+            .from('task_categories')
+            .select('todos!inner(*)', { count: 'exact' })
+            .eq('category_id', category.id)
+
+          const { data: completedCount } = await supabase
+            .from('task_categories')
+            .select('todos!inner(*)', { count: 'exact' })
+            .eq('category_id', category.id)
+            .eq('todos.completed', true)
+
+          return {
+            category_name: category.name,
+            task_count: taskCount?.length || 0,
+            completed_count: completedCount?.length || 0
+          }
+        })
+      )
+      setCategoryStats(categoryStatsData)
+
+      // Calculate activity stats for the last 7 days
+      const last7Days = Array.from({ length: 7 }, (_, i) => {
+        const date = new Date()
+        date.setDate(date.getDate() - i)
+        return date.toISOString().split('T')[0]
+      })
+
+      const activityStatsData = await Promise.all(
+        last7Days.map(async (date) => {
+          const nextDate = new Date(date)
+          nextDate.setDate(nextDate.getDate() + 1)
+
+          const { data: created } = await supabase
+            .from('todos')
+            .select('*', { count: 'exact' })
+            .eq('user_id', user?.id)
+            .gte('created_at', date)
+            .lt('created_at', nextDate.toISOString())
+
+          const { data: completed } = await supabase
+            .from('todos')
+            .select('*', { count: 'exact' })
+            .eq('user_id', user?.id)
+            .eq('completed', true)
+            .gte('created_at', date)
+            .lt('created_at', nextDate.toISOString())
+
+          return {
+            activity_date: date,
+            tasks_created: created?.length || 0,
+            tasks_completed: completed?.length || 0
+          }
+        })
+      )
+      setActivityStats(activityStatsData)
 
     } catch (error) {
       console.error('Error fetching analytics:', error)
+      setError('Failed to load analytics')
       toast.error('Failed to load analytics')
     } finally {
       setLoading(false)
     }
   }
 
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-rebel-red">{error}</p>
+        <button
+          onClick={fetchAnalytics}
+          className="mt-4 px-4 py-2 bg-rebel-red text-white rounded-lg hover:bg-rebel-red-light transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-rebel-red"></div>
+      <div className="space-y-6">
+        {/* Skeleton loading states */}
+        <div className="bg-dark-800 rounded-lg p-6 animate-pulse">
+          <div className="h-6 w-32 bg-dark-700 rounded mb-4"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-dark-700 rounded-lg p-4">
+                <div className="h-4 w-20 bg-dark-600 rounded mb-2"></div>
+                <div className="h-6 w-16 bg-dark-600 rounded"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-dark-800 rounded-lg p-6 animate-pulse">
+          <div className="h-6 w-40 bg-dark-700 rounded mb-4"></div>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-dark-700 rounded-lg p-4">
+                <div className="h-4 w-full bg-dark-600 rounded"></div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
@@ -125,9 +224,9 @@ export const Analytics = () => {
               </div>
               <div className="w-full bg-dark-600 rounded-full h-2">
                 <div
-                  className="bg-rebel-red h-2 rounded-full"
+                  className="bg-rebel-red h-2 rounded-full transition-all duration-500"
                   style={{
-                    width: `${(category.completed_count / category.task_count) * 100}%`
+                    width: `${(category.completed_count / (category.task_count || 1)) * 100}%`
                   }}
                 />
               </div>

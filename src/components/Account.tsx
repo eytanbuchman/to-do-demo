@@ -25,31 +25,44 @@ export const Account = () => {
   const [profile, setProfile] = useState<Profile | null>(null)
 
   useEffect(() => {
-    getProfile()
+    fetchProfile()
   }, [])
 
-  const getProfile = async () => {
+  const fetchProfile = async () => {
     try {
       setLoading(true)
       console.log('Fetching profile...')
-      
+
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('No user found')
 
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .single()
 
-      if (error) throw error
-      console.log('Profile data:', data)
-      
-      if (data) {
-        setProfile({
-          ...data,
-          notification_preferences: data.notification_preferences || { email: false, push: false }
-        })
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No profile found, create one
+          const { data: newProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert([{ 
+              user_id: user.id,
+              email: user.email,
+              username: user.email?.split('@')[0] || 'user'
+            }])
+            .select()
+            .single()
+
+          if (createError) throw createError
+          setProfile(newProfile)
+        } else {
+          throw error
+        }
+      } else {
+        console.log('Profile fetched:', data)
+        setProfile(data)
       }
     } catch (error) {
       console.error('Error fetching profile:', error)

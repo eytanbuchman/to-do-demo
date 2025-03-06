@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, cachedQuery, createCacheKey, clearCache } from '../lib/supabase'
 import { toast } from 'react-hot-toast'
 import { useLocation } from 'react-router-dom'
 import { TaskForm } from './TaskForm'
@@ -17,13 +17,14 @@ interface TaskType {
   description: string
   completed: boolean
   due_date?: string
-  priority: string
+  priority: 'low' | 'medium' | 'high'
   tags: string[]
   is_recurring: boolean
   recurrence_pattern?: string
   subtasks: any[]
   categories?: string[]
   created_at: string
+  task_categories?: Array<{ category_id: string }>
 }
 
 export const TaskList = () => {
@@ -32,7 +33,7 @@ export const TaskList = () => {
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [isAddTaskExpanded, setIsAddTaskExpanded] = useState(false)
-  const [editingTask, setEditingTask] = useState<TaskType | null>(null)
+  const [editingTask, setEditingTask] = useState<Partial<TaskType> | null>(null)
   const location = useLocation()
 
   useEffect(() => {
@@ -52,10 +53,17 @@ export const TaskList = () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('No user found')
 
-      const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('user_id', user.id)
+      const cacheKey = createCacheKey('categories', { user_id: user.id })
+      const { data, error } = await cachedQuery(
+        cacheKey,
+        async () => {
+          const response = await supabase
+            .from('categories')
+            .select('*')
+            .eq('user_id', user.id)
+          return response
+        }
+      )
 
       if (error) throw error
       console.log('Categories fetched:', data)
@@ -74,29 +82,38 @@ export const TaskList = () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('No user found')
 
-      let query = supabase
-        .from('todos')
-        .select(`
-          *,
-          task_categories!inner (
-            category_id
-          )
-        `)
-        .eq('user_id', user.id)
+      const cacheKey = createCacheKey('todos', { 
+        user_id: user.id,
+        category: selectedCategory || 'all'
+      })
 
-      if (selectedCategory) {
-        query = query
-          .eq('task_categories.category_id', selectedCategory)
-      }
+      const { data, error } = await cachedQuery(
+        cacheKey,
+        async () => {
+          let query = supabase
+            .from('todos')
+            .select(`
+              *,
+              task_categories!inner (
+                category_id
+              )
+            `)
+            .eq('user_id', user.id)
 
-      const { data, error } = await query
+          if (selectedCategory) {
+            query = query.eq('task_categories.category_id', selectedCategory)
+          }
+
+          return query
+        }
+      )
 
       if (error) throw error
 
       // Transform the data to include category IDs
-      const tasksWithCategories = data.map(task => ({
+      const tasksWithCategories = (data as TaskType[]).map(task => ({
         ...task,
-        categories: task.task_categories.map((tc: any) => tc.category_id)
+        categories: task.task_categories?.map(tc => tc.category_id) || []
       }))
 
       console.log('Tasks fetched:', tasksWithCategories)
@@ -145,6 +162,15 @@ export const TaskList = () => {
           .insert(categoryRelations)
 
         if (relationError) throw relationError
+      }
+
+      // Clear relevant caches
+      clearCache(createCacheKey('todos', { user_id: user.id, category: 'all' }))
+      if (selectedCategory) {
+        clearCache(createCacheKey('todos', { 
+          user_id: user.id,
+          category: selectedCategory
+        }))
       }
 
       // Add the new task to the state
