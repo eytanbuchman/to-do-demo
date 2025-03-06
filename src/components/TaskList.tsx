@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'react-hot-toast'
 import { useLocation } from 'react-router-dom'
+import { TaskForm } from './TaskForm'
+import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
 interface Category {
   id: string
@@ -29,6 +31,8 @@ export const TaskList = () => {
   const [loading, setLoading] = useState(true)
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [isAddTaskExpanded, setIsAddTaskExpanded] = useState(false)
+  const [editingTask, setEditingTask] = useState<TaskType | null>(null)
   const location = useLocation()
 
   useEffect(() => {
@@ -221,6 +225,16 @@ export const TaskList = () => {
     }
   }
 
+  const handleEditTask = (task: TaskType) => {
+    setEditingTask(task)
+    setIsAddTaskExpanded(true)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingTask(null)
+    setIsAddTaskExpanded(false)
+  }
+
   if (loading && tasks.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -233,96 +247,152 @@ export const TaskList = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-white">Tasks</h1>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-rebel-red to-rebel-red-light bg-clip-text text-transparent">
+            Your Missions
+          </h1>
           
           <div className="flex items-center space-x-4">
             <select
               value={selectedCategory || ''}
               onChange={(e) => setSelectedCategory(e.target.value || null)}
-              className="px-3 py-2 bg-dark-800 border border-dark-700 rounded-lg text-white 
-                       focus:ring-2 focus:ring-rebel-red focus:border-transparent"
+              className="px-3 py-2 bg-dark-800/50 border border-dark-700/50 rounded-lg text-white 
+                       focus:ring-2 focus:ring-rebel-red focus:border-transparent backdrop-blur-sm
+                       transition-all duration-200"
             >
               <option value="">All Categories</option>
               {categories.map(category => (
                 <option key={category.id} value={category.id}>{category.name}</option>
               ))}
             </select>
+
+            <button
+              onClick={() => setIsAddTaskExpanded(!isAddTaskExpanded)}
+              className="flex items-center space-x-2 px-4 py-2 bg-dark-800/50 text-rebel-red border border-rebel-red/20 
+                       rounded-lg backdrop-blur-sm hover:bg-rebel-red hover:text-white 
+                       transition-all duration-300 group"
+            >
+              {isAddTaskExpanded ? (
+                <>
+                  <XMarkIcon className="w-5 h-5" />
+                  <span>Cancel</span>
+                </>
+              ) : (
+                <>
+                  <PlusIcon className="w-5 h-5" />
+                  <span>New Mission</span>
+                </>
+              )}
+            </button>
           </div>
         </div>
 
+        {isAddTaskExpanded && (
+          <div className="mb-8 bg-dark-800/30 backdrop-blur-sm rounded-lg p-6 border border-dark-700/50
+                         shadow-lg shadow-rebel-red/5">
+            <TaskForm
+              onSubmit={handleAddTask}
+              onCancel={handleCancelEdit}
+              initialData={editingTask}
+              availableCategories={categories}
+            />
+          </div>
+        )}
+
         {tasks.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-400">No tasks found. Create one to get started!</p>
+            <p className="text-gray-400">No missions found. Create one to get started!</p>
           </div>
         ) : (
           <div className="space-y-4">
             {tasks.map(task => (
               <div
                 key={task.id}
-                className="bg-dark-800/50 backdrop-blur-sm rounded-lg p-6 border border-dark-700 
-                         hover:border-rebel-red/50 transition-all duration-300"
+                className="group bg-dark-800/30 backdrop-blur-sm rounded-lg p-6 border border-dark-700/50
+                         hover:border-rebel-red/20 transition-all duration-300
+                         hover:shadow-lg hover:shadow-rebel-red/5"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-white mb-2">{task.title}</h3>
-                    <p className="text-gray-400 mb-4">{task.description}</p>
-                    
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {task.categories?.map(categoryId => {
-                        const category = categories.find(c => c.id === categoryId)
-                        return category ? (
-                          <span
-                            key={category.id}
-                            className="px-2 py-1 rounded text-sm"
-                            style={{ 
-                              backgroundColor: `${category.color}33`,
-                              color: category.color,
-                              border: `1px solid ${category.color}66`
-                            }}
-                          >
-                            {category.name}
-                          </span>
-                        ) : null
-                      })}
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        checked={task.completed}
+                        onChange={(e) => handleUpdateTask(task.id, { completed: e.target.checked })}
+                        className="form-checkbox h-5 w-5 text-rebel-red border-dark-700/50 rounded 
+                                 focus:ring-rebel-red focus:ring-offset-dark-900 transition-all duration-200"
+                      />
+                      <h3 className={`text-lg font-medium transition-all duration-200
+                                  ${task.completed ? 'text-gray-500 line-through' : 'text-white'}`}>
+                        {task.title}
+                      </h3>
                     </div>
+                    
+                    <div className="mt-2 ml-8">
+                      <p className={`text-sm transition-all duration-200
+                                 ${task.completed ? 'text-gray-600' : 'text-gray-400'}`}>
+                        {task.description}
+                      </p>
+                      
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {task.categories?.map(categoryId => {
+                          const category = categories.find(c => c.id === categoryId)
+                          return category ? (
+                            <span
+                              key={category.id}
+                              className="px-2 py-0.5 rounded-full text-xs font-medium transition-all duration-200"
+                              style={{ 
+                                backgroundColor: `${category.color}15`,
+                                color: task.completed ? `${category.color}88` : category.color,
+                                border: `1px solid ${category.color}33`
+                              }}
+                            >
+                              {category.name}
+                            </span>
+                          ) : null
+                        })}
 
-                    <div className="flex items-center space-x-4 text-sm text-gray-400">
-                      <span>Priority: {task.priority}</span>
-                      {task.due_date && (
-                        <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>
-                      )}
+                        {task.due_date && (
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium
+                                        ${task.completed 
+                                          ? 'bg-dark-700/30 text-gray-500' 
+                                          : 'bg-rebel-red/10 text-rebel-red'}`}>
+                            Due {new Date(task.due_date).toLocaleDateString()}
+                          </span>
+                        )}
+
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium
+                                      ${task.completed 
+                                        ? 'bg-dark-700/30 text-gray-500' 
+                                        : 'bg-dark-700/50 text-gray-400'}`}>
+                          {task.priority}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <button
+                      onClick={() => handleEditTask(task)}
+                      className="p-1 text-dark-400 hover:text-rebel-red transition-colors"
+                      title="Edit mission"
+                    >
+                      ✎
+                    </button>
                     <button
                       onClick={() => handleDuplicateTask(task)}
-                      className="text-dark-400 hover:text-rebel-red transition-colors"
-                      title="Duplicate task"
+                      className="p-1 text-dark-400 hover:text-rebel-red transition-colors"
+                      title="Duplicate mission"
                     >
                       📋
                     </button>
                     <button
                       onClick={() => handleDeleteTask(task.id)}
-                      className="text-dark-400 hover:text-rebel-red transition-colors"
-                      title="Delete task"
+                      className="p-1 text-dark-400 hover:text-rebel-red transition-colors"
+                      title="Delete mission"
                     >
                       ×
                     </button>
                   </div>
-                </div>
-
-                <div className="mt-4 pt-4 border-t border-dark-700">
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={task.completed}
-                      onChange={(e) => handleUpdateTask(task.id, { completed: e.target.checked })}
-                      className="form-checkbox h-4 w-4 text-rebel-red border-dark-700 rounded 
-                               focus:ring-rebel-red focus:ring-offset-dark-900"
-                    />
-                    <span className="text-gray-300">Mark as completed</span>
-                  </label>
                 </div>
               </div>
             ))}

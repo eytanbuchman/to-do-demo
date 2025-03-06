@@ -44,23 +44,27 @@ export const Categories = () => {
       const categoriesWithCounts = await Promise.all(
         (categoriesData || []).map(async (category) => {
           // Get total tasks
-          const { count: totalCount } = await supabase
+          const { data: totalData, error: totalError } = await supabase
             .from('task_categories')
-            .select('*', { count: 'exact' })
+            .select('todos!inner(*)', { count: 'exact' })
             .eq('category_id', category.id)
 
+          if (totalError) console.error('Error fetching total count:', totalError)
+
           // Get incomplete tasks
-          const { count: incompleteCount } = await supabase
+          const { data: incompleteData, error: incompleteError } = await supabase
             .from('task_categories')
-            .select('task_categories.*, todos!inner(completed)', { count: 'exact' })
+            .select('todos!inner(*)')
             .eq('category_id', category.id)
             .eq('todos.completed', false)
+
+          if (incompleteError) console.error('Error fetching incomplete count:', incompleteError)
 
           return {
             ...category,
             task_count: {
-              total: totalCount || 0,
-              incomplete: incompleteCount || 0
+              total: totalData?.length || 0,
+              incomplete: incompleteData?.length || 0
             }
           }
         })
