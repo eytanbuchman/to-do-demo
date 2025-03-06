@@ -140,3 +140,159 @@ MIT License - feel free to rebel against this too.
 ## 🙏 Acknowledgments
 
 Built by rebels, for rebels. No productivity experts were consulted in the making of this app.
+
+## Database Structure
+
+### Tables
+
+#### 1. `todos` Table
+```sql
+CREATE TABLE todos (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id),
+    title TEXT NOT NULL,
+    description TEXT,
+    completed BOOLEAN DEFAULT FALSE,
+    due_date TIMESTAMP WITH TIME ZONE,
+    priority TEXT DEFAULT 'medium',
+    tags TEXT[],
+    is_recurring BOOLEAN DEFAULT FALSE,
+    recurrence_pattern TEXT,
+    subtasks JSONB[],
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+#### 2. `categories` Table
+```sql
+CREATE TABLE categories (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES auth.users(id),
+    name TEXT NOT NULL,
+    color TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+#### 3. `task_categories` Table (Junction Table)
+```sql
+CREATE TABLE task_categories (
+    task_id UUID REFERENCES todos(id) ON DELETE CASCADE,
+    category_id UUID REFERENCES categories(id) ON DELETE CASCADE,
+    PRIMARY KEY (task_id, category_id)
+);
+```
+
+#### 4. `profiles` Table
+```sql
+CREATE TABLE profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id),
+    first_name TEXT,
+    last_name TEXT,
+    username TEXT UNIQUE,
+    avatar_url TEXT,
+    bio TEXT,
+    website TEXT,
+    timezone TEXT DEFAULT 'UTC',
+    theme TEXT DEFAULT 'dark',
+    notification_preferences JSONB DEFAULT '{"email": true, "push": false}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+### TypeScript Interfaces
+
+```typescript
+interface Todo {
+    id: string;
+    user_id: string;
+    title: string;
+    description?: string;
+    completed: boolean;
+    due_date?: string;
+    priority: 'low' | 'medium' | 'high';
+    tags: string[];
+    is_recurring: boolean;
+    recurrence_pattern?: string;
+    subtasks: any[];
+    created_at: string;
+    updated_at: string;
+    categories?: Category[];
+}
+
+interface Category {
+    id: string;
+    user_id: string;
+    name: string;
+    color: string;
+    created_at: string;
+    updated_at: string;
+}
+
+interface Profile {
+    id: string;
+    first_name: string;
+    last_name: string;
+    username: string;
+    email: string;
+    avatar_url: string;
+    bio: string;
+    website: string;
+    timezone: string;
+    theme: 'dark' | 'light';
+    notification_preferences: {
+        email: boolean;
+        push: boolean;
+    };
+}
+```
+
+### Row Level Security (RLS) Policies
+
+All tables have RLS enabled with the following policies:
+
+1. Users can only view their own data
+2. Users can only insert their own data
+3. Users can only update their own data
+4. Users can only delete their own data
+
+### Analytics Views
+
+The application uses views instead of separate tables for analytics:
+
+1. `task_completion_stats` - Task completion statistics by user
+2. `category_usage_stats` - Category usage statistics
+3. `user_activity_stats` - User activity statistics over time
+
+## Features
+
+- User authentication and profile management
+- Task creation and management with categories
+- Task filtering and sorting
+- Recurring tasks support
+- Category management
+- Analytics and reporting
+- Dark/Light theme support
+- Notification preferences
+- Timezone support
+
+## Tech Stack
+
+- Frontend: React + TypeScript + Vite
+- UI: TailwindCSS
+- Backend: Supabase
+- Database: PostgreSQL
+- Authentication: Supabase Auth
+
+## Development
+
+To start the development server:
+
+```bash
+npm run dev
+```
+
+Note: The application runs on port 3001 by default.

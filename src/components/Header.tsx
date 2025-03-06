@@ -1,54 +1,96 @@
+import React from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { ChartBarIcon } from '@heroicons/react/24/outline'
 
 interface HeaderProps {
-  onNavigate: (page: string) => void;
-  currentPage: string;
+  onNavigate: (page: string) => void
+  currentPage: string
 }
 
-const Header = ({ onNavigate, currentPage }: HeaderProps) => {
+export const Header: React.FC<HeaderProps> = ({ onNavigate, currentPage }) => {
   const { user, signOut } = useAuth()
 
-  if (!user) return null
+  const navItems = [
+    { id: 'tasks', label: 'Tasks' },
+    { id: 'categories', label: 'Categories' },
+    { id: 'analytics', label: 'Analytics' },
+    { id: 'profile', label: 'Profile' }
+  ]
 
   return (
-    <header className="bg-dark-900 p-4 shadow-lg">
-      <div className="container mx-auto flex justify-between items-center">
-        <button 
-          onClick={() => onNavigate('tasks')} 
-          className="flex items-center space-x-1 logo-hover"
-        >
-          <span className="text-2xl font-bold logo-gradient logo-glow">Task</span>
-          <span className="text-2xl font-bold logo-gradient logo-glow">Rebel</span>
-        </button>
-        <nav className="flex gap-4">
-          <button 
-            onClick={() => onNavigate('categories')} 
-            className={`text-white hover:text-rebel-red transition-colors flex items-center gap-1 ${
-              currentPage === 'categories' ? 'text-rebel-red' : ''
-            }`}
+    <header className="py-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-8">
+          <h1 className="text-2xl font-bold text-rebel-red">TaskRebel</h1>
+          <nav className="hidden md:flex items-center space-x-4">
+            {navItems.map(item => (
+              <button
+                key={item.id}
+                onClick={() => onNavigate(item.id)}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  currentPage === item.id
+                    ? 'bg-dark-700 text-white'
+                    : 'text-dark-400 hover:text-white'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        <div className="flex items-center space-x-4">
+          {user && (
+            <button
+              onClick={() => signOut()}
+              className="text-dark-400 hover:text-white transition-colors"
+            >
+              Sign Out
+            </button>
+          )}
+        </div>
+
+        {/* Mobile menu button */}
+        <div className="md:hidden">
+          <button
+            type="button"
+            className="text-dark-400 hover:text-white"
+            aria-label="Open menu"
           >
-            Categories
+            <svg
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 12h16M4 18h16"
+              />
+            </svg>
           </button>
-          <button 
-            onClick={() => onNavigate('analytics')} 
-            className={`text-white hover:text-rebel-red transition-colors flex items-center gap-1 ${
-              currentPage === 'analytics' ? 'text-rebel-red' : ''
-            }`}
-          >
-            <ChartBarIcon className="w-5 h-5" />
-            Analytics
-          </button>
-          <button 
-            onClick={signOut} 
-            className="text-white hover:text-rebel-red transition-colors"
-          >
-            Sign Out
-          </button>
-        </nav>
+        </div>
       </div>
+
+      {/* Mobile menu */}
+      <nav className="md:hidden mt-4">
+        <div className="space-y-2">
+          {navItems.map(item => (
+            <button
+              key={item.id}
+              onClick={() => onNavigate(item.id)}
+              className={`block w-full text-left px-4 py-2 rounded-lg transition-colors ${
+                currentPage === item.id
+                  ? 'bg-dark-700 text-white'
+                  : 'text-dark-400 hover:text-white'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </nav>
     </header>
   )
-}
-
-export default Header 
+} 

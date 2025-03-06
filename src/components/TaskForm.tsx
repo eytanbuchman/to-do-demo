@@ -1,207 +1,288 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import toast from 'react-hot-toast'
 import { useAuth } from '../contexts/AuthContext'
+import { toast } from 'react-hot-toast'
+
+interface Category {
+  id: string
+  name: string
+  color: string
+}
 
 interface TaskFormProps {
   onSubmit: (task: {
-    title: string
-    description: string
-    completed: boolean
-    priority: string
-    tags: string[]
-    due_date?: string
-    is_recurring: boolean
-    recurrence_pattern?: string
-    subtasks: any[]
-  }) => void
+    title: string;
+    description: string;
+    due_date?: string;
+    priority: 'low' | 'medium' | 'high';
+    tags: string[];
+    is_recurring: boolean;
+    recurrence_pattern?: string;
+    categories?: string[];
+    user_id: string;
+  }) => void;
+  initialData?: {
+    title?: string;
+    description?: string;
+    due_date?: string;
+    priority?: 'low' | 'medium' | 'high';
+    tags?: string[];
+    is_recurring?: boolean;
+    recurrence_pattern?: string;
+    categories?: Category[];
+  };
+  isEditing?: boolean;
 }
 
-export const TaskForm: React.FC<TaskFormProps> = ({ onSubmit }) => {
+export const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, initialData, isEditing = false }) => {
   const { user } = useAuth()
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [priority, setPriority] = useState('medium')
-  const [dueDate, setDueDate] = useState('')
-  const [tags, setTags] = useState<string[]>([])
-  const [tagInput, setTagInput] = useState('')
-  const [isRecurring, setIsRecurring] = useState(false)
-  const [recurrencePattern, setRecurrencePattern] = useState('')
+  const [title, setTitle] = useState(initialData?.title || '')
+  const [description, setDescription] = useState(initialData?.description || '')
+  const [dueDate, setDueDate] = useState(initialData?.due_date || '')
+  const [priority, setPriority] = useState(initialData?.priority || 'medium')
+  const [tags, setTags] = useState<string[]>(initialData?.tags || [])
+  const [isRecurring, setIsRecurring] = useState(initialData?.is_recurring || false)
+  const [recurrencePattern, setRecurrencePattern] = useState(initialData?.recurrence_pattern || '')
+  const [categories, setCategories] = useState<Category[]>([])
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(initialData?.categories?.map((c: Category) => c.id) || [])
+  const [categoryInput, setCategoryInput] = useState('')
+  const [filteredCategories, setFilteredCategories] = useState<Category[]>([])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetchCategories()
+  }, [])
+
+  useEffect(() => {
+    if (categoryInput) {
+      const filtered = categories.filter(cat => 
+        cat.name.toLowerCase().includes(categoryInput.toLowerCase()) &&
+        !selectedCategories.includes(cat.id)
+      )
+      setFilteredCategories(filtered)
+    } else {
+      setFilteredCategories([])
+    }
+  }, [categoryInput, categories, selectedCategories])
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('user_id', user?.id)
+
+      if (error) throw error
+      setCategories(data || [])
+    } catch (error) {
+      console.error('Error fetching categories:', error)
+      toast.error('Failed to load categories')
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Submitting task form with values:', {
+    if (!user?.id) {
+      toast.error('User not authenticated')
+      return
+    }
+    
+    const taskData = {
       title,
       description,
-      priority,
-      dueDate,
-      tags,
-      isRecurring,
-      recurrencePattern
-    })
-
-    onSubmit({
-      title,
-      description,
-      completed: false,
+      due_date: dueDate,
       priority,
       tags,
-      due_date: dueDate || undefined,
       is_recurring: isRecurring,
-      recurrence_pattern: recurrencePattern || undefined,
-      subtasks: []
-    })
-
-    // Reset form
-    setTitle('')
-    setDescription('')
-    setPriority('medium')
-    setDueDate('')
-    setTags([])
-    setTagInput('')
-    setIsRecurring(false)
-    setRecurrencePattern('')
-  }
-
-  const handleAddTag = () => {
-    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-      setTags([...tags, tagInput.trim()])
-      setTagInput('')
+      recurrence_pattern: isRecurring ? recurrencePattern || undefined : undefined,
+      categories: selectedCategories,
+      user_id: user.id
+    }
+    onSubmit(taskData)
+    if (!isEditing) {
+      setTitle('')
+      setDescription('')
+      setDueDate('')
+      setPriority('medium')
+      setTags([])
+      setIsRecurring(false)
+      setRecurrencePattern('')
+      setSelectedCategories([])
+      setCategoryInput('')
     }
   }
 
-  const handleRemoveTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove))
+  const handleCategorySelect = (categoryId: string) => {
+    setSelectedCategories(prev => [...prev, categoryId])
+    setCategoryInput('')
   }
 
-  const handleTagInputKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      handleAddTag()
-    }
+  const handleRemoveCategory = (categoryId: string) => {
+    setSelectedCategories(prev => prev.filter(id => id !== categoryId))
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-dark-800 rounded-lg p-6">
-      <div className="space-y-4">
-        <div>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Task title"
-            required
-            className="w-full bg-dark-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rebel-red"
-          />
-        </div>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-dark-400 mb-1">
+          Title
+        </label>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          required
+          className="w-full bg-dark-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rebel-red"
+          placeholder="Task title"
+        />
+      </div>
 
-        <div>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Task description"
-            rows={3}
-            className="w-full bg-dark-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rebel-red"
-          />
-        </div>
+      <div>
+        <label className="block text-sm font-medium text-dark-400 mb-1">
+          Description
+        </label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="w-full bg-dark-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rebel-red"
+          rows={3}
+          placeholder="Task description"
+        />
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <select
-              value={priority}
-              onChange={(e) => setPriority(e.target.value)}
-              className="w-full bg-dark-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rebel-red"
-            >
-              <option value="low">Low Priority</option>
-              <option value="medium">Medium Priority</option>
-              <option value="high">High Priority</option>
-            </select>
-          </div>
+      <div>
+        <label className="block text-sm font-medium text-dark-400 mb-1">
+          Due Date
+        </label>
+        <input
+          type="datetime-local"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+          className="w-full bg-dark-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rebel-red"
+        />
+      </div>
 
-          <div>
-            <input
-              type="datetime-local"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="w-full bg-dark-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rebel-red"
-            />
-          </div>
-        </div>
+      <div>
+        <label className="block text-sm font-medium text-dark-400 mb-1">
+          Priority
+        </label>
+        <select
+          value={priority}
+          onChange={(e) => setPriority(e.target.value as 'low' | 'medium' | 'high')}
+          className="w-full bg-dark-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rebel-red"
+        >
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
 
-        <div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyPress={handleTagInputKeyPress}
-              placeholder="Add tags"
-              className="flex-1 bg-dark-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rebel-red"
-            />
-            <button
-              type="button"
-              onClick={handleAddTag}
-              className="px-4 py-2 bg-dark-700 text-white rounded-lg hover:bg-dark-600 transition-colors"
-            >
-              Add Tag
-            </button>
-          </div>
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-2">
-              {tags.map((tag, index) => (
+      <div>
+        <label className="block text-sm font-medium text-dark-400 mb-1">
+          Tags (comma-separated)
+        </label>
+        <input
+          type="text"
+          value={tags.join(', ')}
+          onChange={(e) => setTags(e.target.value.split(',').map(tag => tag.trim()).filter(Boolean))}
+          className="w-full bg-dark-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rebel-red"
+          placeholder="Enter tags separated by commas"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-dark-400 mb-1">
+          Categories
+        </label>
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-2 mb-2">
+            {selectedCategories.map(catId => {
+              const category = categories.find(c => c.id === catId)
+              return category ? (
                 <span
-                  key={index}
-                  className="px-2 py-1 bg-dark-700 text-white rounded-full flex items-center gap-1"
+                  key={category.id}
+                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm"
+                  style={{ backgroundColor: category.color + '40' }}
                 >
-                  {tag}
+                  {category.name}
                   <button
                     type="button"
-                    onClick={() => handleRemoveTag(tag)}
-                    className="text-dark-400 hover:text-white ml-1"
+                    onClick={() => handleRemoveCategory(category.id)}
+                    className="text-dark-400 hover:text-white"
                   >
                     ×
                   </button>
                 </span>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="isRecurring"
-              checked={isRecurring}
-              onChange={(e) => setIsRecurring(e.target.checked)}
-              className="bg-dark-700 text-rebel-red rounded focus:ring-rebel-red"
-            />
-            <label htmlFor="isRecurring" className="text-white">
-              Recurring Task
-            </label>
+              ) : null
+            })}
           </div>
-          {isRecurring && (
-            <select
-              value={recurrencePattern}
-              onChange={(e) => setRecurrencePattern(e.target.value)}
+          <div className="relative">
+            <input
+              type="text"
+              value={categoryInput}
+              onChange={(e) => setCategoryInput(e.target.value)}
               className="w-full bg-dark-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rebel-red"
-            >
-              <option value="">Select Recurrence Pattern</option>
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-            </select>
-          )}
+              placeholder="Type to search categories"
+            />
+            {filteredCategories.length > 0 && (
+              <div className="absolute z-10 w-full mt-1 bg-dark-800 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {filteredCategories.map(category => (
+                  <button
+                    key={category.id}
+                    type="button"
+                    onClick={() => handleCategorySelect(category.id)}
+                    className="w-full text-left px-4 py-2 hover:bg-dark-700 text-white"
+                  >
+                    <span
+                      className="inline-block w-3 h-3 rounded-full mr-2"
+                      style={{ backgroundColor: category.color }}
+                    />
+                    {category.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+      </div>
 
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            className="bg-rebel-red hover:bg-rebel-red-light text-white px-6 py-2 rounded-lg transition-colors"
+      <div>
+        <label className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            checked={isRecurring}
+            onChange={(e) => setIsRecurring(e.target.checked)}
+            className="bg-dark-700 text-rebel-red rounded focus:ring-rebel-red"
+          />
+          <span className="text-sm font-medium text-dark-400">Recurring Task</span>
+        </label>
+      </div>
+
+      {isRecurring && (
+        <div>
+          <label className="block text-sm font-medium text-dark-400 mb-1">
+            Recurrence Pattern
+          </label>
+          <select
+            value={recurrencePattern}
+            onChange={(e) => setRecurrencePattern(e.target.value)}
+            className="w-full bg-dark-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rebel-red"
           >
-            Add Task
-          </button>
+            <option value="">Select a pattern</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="custom">Custom</option>
+          </select>
         </div>
+      )}
+
+      <div className="flex justify-end">
+        <button
+          type="submit"
+          className="bg-rebel-red hover:bg-rebel-red-light text-white px-6 py-2 rounded-lg transition-colors"
+        >
+          {isEditing ? 'Update Task' : 'Add Task'}
+        </button>
       </div>
     </form>
   )

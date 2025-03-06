@@ -1,5 +1,5 @@
-import React from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState } from 'react'
+import { Auth } from './Auth'
 import {
   RocketLaunchIcon,
   SparklesIcon,
@@ -7,10 +7,10 @@ import {
   BeakerIcon,
   ArrowPathIcon,
   TagIcon,
-} from '@heroicons/react/24/outline';
+} from '@heroicons/react/24/outline'
 
-export const LandingPage: React.FC = () => {
-  const { login } = useAuth();
+export const LandingPage = () => {
+  const [showAuth, setShowAuth] = useState(false)
 
   const features = [
     {
@@ -43,7 +43,7 @@ export const LandingPage: React.FC = () => {
       title: "Mission Objectives",
       description: "Break down big missions into smaller rebellions. Because even rebels need a plan sometimes."
     }
-  ];
+  ]
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-dark-950 to-dark-900">
@@ -59,7 +59,7 @@ export const LandingPage: React.FC = () => {
           <span className="text-gray-400">No productivity porn. Just results.</span>
         </p>
         <button
-          onClick={login}
+          onClick={() => setShowAuth(true)}
           className="bg-rebel-red hover:bg-rebel-red-light text-white text-lg px-8 py-4 rounded-lg shadow-lg 
                    hover:shadow-rebel-red/20 hover:transform hover:-translate-y-1 transition-all duration-300"
         >
@@ -120,7 +120,7 @@ export const LandingPage: React.FC = () => {
             Join thousands of rebels who've ditched traditional productivity tools for something that actually works.
           </p>
           <button
-            onClick={login}
+            onClick={() => setShowAuth(true)}
             className="bg-rebel-red hover:bg-rebel-red-light text-white text-lg px-8 py-4 rounded-lg shadow-lg 
                      hover:shadow-rebel-red/20 hover:transform hover:-translate-y-1 transition-all duration-300"
           >
@@ -135,6 +135,21 @@ export const LandingPage: React.FC = () => {
           <p>Built by rebels, for rebels. No productivity experts were consulted in the making of this app.</p>
         </div>
       </footer>
+
+      {/* Auth Modal */}
+      {showAuth && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="relative w-full max-w-md">
+            <button
+              onClick={() => setShowAuth(false)}
+              className="absolute top-4 right-4 text-dark-400 hover:text-white"
+            >
+              ×
+            </button>
+            <Auth />
+          </div>
+        </div>
+      )}
     </div>
-  );
-}; 
+  )
+} 

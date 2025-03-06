@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import Task from './Task'
 import { TaskForm } from './TaskForm'
 import { toast } from 'react-hot-toast'
+import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
 interface TaskType {
   id: string
@@ -16,6 +17,7 @@ interface TaskType {
   recurrence_pattern?: string
   subtasks: any[]
   created_at: string
+  categories?: string[]
 }
 
 export const TaskList = () => {
@@ -27,6 +29,7 @@ export const TaskList = () => {
     status: ''
   })
   const [tags, setTags] = useState<string[]>([])
+  const [isAddTaskExpanded, setIsAddTaskExpanded] = useState(false)
 
   const fetchTasks = async () => {
     try {
@@ -76,19 +79,39 @@ export const TaskList = () => {
   const handleAddTask = async (task: Omit<TaskType, 'id' | 'created_at'>) => {
     try {
       console.log('Adding task:', task)
+      const { categories, ...taskData } = task
       const newTask = {
-        ...task,
+        ...taskData,
         created_at: new Date().toISOString()
       }
-      const { data, error } = await supabase
+
+      // Insert the task
+      const { data, error: taskError } = await supabase
         .from('todos')
         .insert([newTask])
         .select()
+        .single()
 
-      if (error) throw error
+      if (taskError) throw taskError
+
+      // If there are categories, create the relationships
+      if (categories && categories.length > 0 && data) {
+        const categoryRelations = categories.map(categoryId => ({
+          task_id: data.id,
+          category_id: categoryId
+        }))
+
+        const { error: categoryError } = await supabase
+          .from('task_categories')
+          .insert(categoryRelations)
+
+        if (categoryError) throw categoryError
+      }
+
+      if (!data) throw new Error('No data returned from task insert')
 
       console.log('Task added:', data)
-      setTasks([data[0], ...tasks])
+      setTasks([data, ...tasks])
       toast.success('Task added successfully!')
     } catch (error) {
       console.error('Error adding task:', error)
@@ -142,41 +165,69 @@ export const TaskList = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-4 items-center">
-        <select
-          value={filters.priority}
-          onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
-          className="bg-dark-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rebel-red"
-        >
-          <option value="">All Priorities</option>
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-        </select>
+      <div className="bg-dark-800 rounded-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-white">Tasks</h2>
+          <button
+            onClick={() => setIsAddTaskExpanded(!isAddTaskExpanded)}
+            className="flex items-center gap-2 bg-rebel-red hover:bg-rebel-red-light px-4 py-2 rounded-lg text-white transition-colors"
+          >
+            {isAddTaskExpanded ? (
+              <>
+                <XMarkIcon className="w-5 h-5" />
+                Cancel
+              </>
+            ) : (
+              <>
+                <PlusIcon className="w-5 h-5" />
+                Add Task
+              </>
+            )}
+          </button>
+        </div>
+        
+        {isAddTaskExpanded && (
+          <div className="mb-6">
+            <TaskForm onAddTask={handleAddTask} />
+          </div>
+        )}
 
-        <select
-          value={filters.status}
-          onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-          className="bg-dark-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rebel-red"
-        >
-          <option value="">All Status</option>
-          <option value="active">Active</option>
-          <option value="completed">Completed</option>
-        </select>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <select
+              value={filters.priority}
+              onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
+              className="bg-dark-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rebel-red"
+            >
+              <option value="">All Priorities</option>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
 
-        <select
-          value={filters.tag}
-          onChange={(e) => setFilters({ ...filters, tag: e.target.value })}
-          className="bg-dark-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rebel-red"
-        >
-          <option value="">All Tags</option>
-          {tags.map((tag) => (
-            <option key={tag} value={tag}>{tag}</option>
-          ))}
-        </select>
+            <select
+              value={filters.status}
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              className="bg-dark-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rebel-red"
+            >
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="completed">Completed</option>
+            </select>
+
+            <select
+              value={filters.tag}
+              onChange={(e) => setFilters({ ...filters, tag: e.target.value })}
+              className="bg-dark-700 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-rebel-red"
+            >
+              <option value="">All Tags</option>
+              {tags.map((tag) => (
+                <option key={tag} value={tag}>{tag}</option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
-
-      <TaskForm onSubmit={handleAddTask} />
 
       <div className="space-y-4">
         {tasks.length === 0 ? (
