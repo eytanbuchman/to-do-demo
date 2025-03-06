@@ -9,7 +9,6 @@ import { Analytics } from './components/Analytics'
 import { Account } from './components/Account'
 import { LandingPage } from './components/LandingPage'
 import { ResetPassword } from './components/ResetPassword'
-import { AuthCallback } from './components/AuthCallback'
 
 function App() {
   const [session, setSession] = useState<any>(null)
@@ -17,9 +16,13 @@ function App() {
 
   useEffect(() => {
     // Check for password reset flow
-    console.log('Checking for reset flow:', window.location.hash)
-    if (window.location.hash.includes('#recovery=')) {
+    const params = new URLSearchParams(window.location.hash.substring(1))
+    const type = params.get('type')
+    console.log('Auth flow type:', type)
+    
+    if (type === 'recovery') {
       setIsResetFlow(true)
+      return
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -63,7 +66,6 @@ function App() {
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/account" element={<Account />} />
                 <Route path="/" element={<Navigate to="/tasks" replace />} />
-                <Route path="/auth/callback" element={<AuthCallback />} />
               </Routes>
             </main>
           </>

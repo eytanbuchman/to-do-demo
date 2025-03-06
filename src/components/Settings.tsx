@@ -16,15 +16,15 @@ interface SettingsSectionProps {
 const SettingsSection: React.FC<SettingsSectionProps> = ({ title, icon, children }) => (
   <div className="bg-dark-800 rounded-lg p-6 mb-6">
     <div className="flex items-center space-x-2 mb-4">
-      <div className="w-6 h-6 text-primary-400">{icon}</div>
-      <h2 className="text-lg font-semibold text-white">{title}</h2>
+      <div className="text-dark-400">{icon}</div>
+      <h2 className="text-lg font-medium text-white">{title}</h2>
     </div>
     {children}
   </div>
 );
 
 export const Settings: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const [notifications, setNotifications] = useState({
     email: true,
     push: false,
@@ -34,7 +34,7 @@ export const Settings: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      await logout();
+      await signOut();
     } catch (error) {
       console.error('Error logging out:', error);
     }
@@ -60,82 +60,49 @@ export const Settings: React.FC = () => {
       <SettingsSection title="Notifications" icon={<BellIcon />}>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-white font-medium">Email Notifications</h3>
-              <p className="text-sm text-dark-400">Get mission updates via email</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={notifications.email}
-                onChange={(e) => setNotifications({ ...notifications, email: e.target.checked })}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-dark-600 peer-focus:outline-none peer-focus:ring-2 
-                            peer-focus:ring-primary-400 rounded-full peer 
-                            peer-checked:after:translate-x-full peer-checked:bg-primary-500
-                            after:content-[''] after:absolute after:top-[2px] after:left-[2px] 
-                            after:bg-white after:rounded-full after:h-5 after:w-5 
-                            after:transition-all"></div>
-            </label>
+            <label className="text-sm font-medium text-dark-400">Email Notifications</label>
+            <input
+              type="checkbox"
+              checked={notifications.email}
+              onChange={(e) => setNotifications({ ...notifications, email: e.target.checked })}
+              className="toggle"
+            />
           </div>
-
           <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-white font-medium">Push Notifications</h3>
-              <p className="text-sm text-dark-400">Get notified in your browser</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={notifications.push}
-                onChange={(e) => setNotifications({ ...notifications, push: e.target.checked })}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-dark-600 peer-focus:outline-none peer-focus:ring-2 
-                            peer-focus:ring-primary-400 rounded-full peer 
-                            peer-checked:after:translate-x-full peer-checked:bg-primary-500
-                            after:content-[''] after:absolute after:top-[2px] after:left-[2px] 
-                            after:bg-white after:rounded-full after:h-5 after:w-5 
-                            after:transition-all"></div>
-            </label>
+            <label className="text-sm font-medium text-dark-400">Push Notifications</label>
+            <input
+              type="checkbox"
+              checked={notifications.push}
+              onChange={(e) => setNotifications({ ...notifications, push: e.target.checked })}
+              className="toggle"
+            />
           </div>
-
           <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-white font-medium">Due Date Reminders</h3>
-              <p className="text-sm text-dark-400">Get reminded of upcoming missions</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={notifications.dueDates}
-                onChange={(e) => setNotifications({ ...notifications, dueDates: e.target.checked })}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-dark-600 peer-focus:outline-none peer-focus:ring-2 
-                            peer-focus:ring-primary-400 rounded-full peer 
-                            peer-checked:after:translate-x-full peer-checked:bg-primary-500
-                            after:content-[''] after:absolute after:top-[2px] after:left-[2px] 
-                            after:bg-white after:rounded-full after:h-5 after:w-5 
-                            after:transition-all"></div>
-            </label>
+            <label className="text-sm font-medium text-dark-400">Due Date Reminders</label>
+            <input
+              type="checkbox"
+              checked={notifications.dueDates}
+              onChange={(e) => setNotifications({ ...notifications, dueDates: e.target.checked })}
+              className="toggle"
+            />
           </div>
         </div>
       </SettingsSection>
 
       <SettingsSection title="Appearance" icon={<SwatchIcon />}>
-        <div>
-          <label className="block text-sm font-medium text-dark-400 mb-2">Theme</label>
-          <select
-            value={theme}
-            onChange={(e) => setTheme(e.target.value)}
-            className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-white"
-          >
-            <option value="dark">Dark Mode</option>
-            <option value="light">Light Mode</option>
-            <option value="system">System Default</option>
-          </select>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-dark-400 mb-2">Theme</label>
+            <select
+              value={theme}
+              onChange={(e) => setTheme(e.target.value)}
+              className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-white"
+            >
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+              <option value="system">System</option>
+            </select>
+          </div>
         </div>
       </SettingsSection>
 

@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 import { toast } from 'react-hot-toast'
 
 export const Auth = () => {
+  const { signIn, signUp, resetPassword } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -13,15 +14,9 @@ export const Auth = () => {
     try {
       setLoading(true)
       console.log('Attempting to sign in with:', email)
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-      if (error) throw error
-      console.log('Sign in successful')
+      await signIn(email, password)
     } catch (error) {
       console.error('Error signing in:', error)
-      toast.error('Failed to sign in')
     } finally {
       setLoading(false)
     }
@@ -32,16 +27,9 @@ export const Auth = () => {
     try {
       setLoading(true)
       console.log('Attempting to sign up with:', email)
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-      })
-      if (error) throw error
-      console.log('Sign up successful')
-      toast.success('Check your email to confirm your account!')
+      await signUp(email, password)
     } catch (error) {
       console.error('Error signing up:', error)
-      toast.error('Failed to sign up')
     } finally {
       setLoading(false)
     }
@@ -52,16 +40,10 @@ export const Auth = () => {
     try {
       setLoading(true)
       console.log('Attempting to reset password for:', email)
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/#recovery',
-      })
-      if (error) throw error
-      console.log('Password reset email sent')
-      toast.success('Check your email for the password reset link!')
+      await resetPassword(email)
       setIsResetMode(false)
     } catch (error) {
       console.error('Error resetting password:', error)
-      toast.error('Failed to send reset password email')
     } finally {
       setLoading(false)
     }

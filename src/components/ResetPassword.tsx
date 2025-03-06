@@ -9,8 +9,23 @@ export const ResetPassword = () => {
 
   useEffect(() => {
     // Check if we have a recovery token in the URL
-    const hash = window.location.hash
-    console.log('URL hash:', hash)
+    const params = new URLSearchParams(window.location.hash.substring(1))
+    const accessToken = params.get('access_token')
+    
+    if (accessToken) {
+      // Set the access token in the session
+      supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: '',
+      })
+    } else {
+      console.error('No access token found in URL')
+      toast.error('Invalid reset link')
+      // Redirect to home after a short delay
+      setTimeout(() => {
+        window.location.href = '/'
+      }, 2000)
+    }
   }, [])
 
   const handleReset = async (e: React.FormEvent) => {
@@ -28,13 +43,17 @@ export const ResetPassword = () => {
 
     try {
       setLoading(true)
-      const { error } = await supabase.auth.updateUser({ password })
+      const { error } = await supabase.auth.updateUser({ 
+        password: password 
+      })
 
       if (error) throw error
 
       toast.success('Password updated successfully!')
       // Redirect to login after successful password reset
-      window.location.href = '/'
+      setTimeout(() => {
+        window.location.href = '/'
+      }, 2000)
     } catch (error) {
       console.error('Error resetting password:', error)
       toast.error('Failed to reset password')
@@ -50,6 +69,9 @@ export const ResetPassword = () => {
           <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
             Reset your password
           </h2>
+          <p className="mt-2 text-center text-sm text-gray-400">
+            Enter your new password below
+          </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleReset}>
           <div className="rounded-md shadow-sm space-y-4">
