@@ -320,13 +320,16 @@ export const TaskList = () => {
         {!loading && tasks.length === 0 && (
           <div className="text-center py-16 px-4">
             <RocketLaunchIcon className="w-16 h-16 mx-auto text-rebel-red mb-4" />
-            <h3 className="text-2xl font-bold text-white mb-2">No Missions Yet</h3>
-            <p className="text-gray-400 mb-8">Your mission log is emptier than a programmer's social calendar. Time to start your rebellion!</p>
+            <h3 className="text-2xl font-bold text-white mb-2">Mission Control Empty</h3>
+            <p className="text-gray-400 mb-8">
+              Your mission log is emptier than a productivity guru's Netflix queue. 
+              Time to start your rebellion against procrastination!
+            </p>
             <button
               onClick={() => setIsAddTaskExpanded(true)}
               className="bg-rebel-red hover:bg-rebel-red-light text-white px-6 py-3 rounded-lg transition-all duration-300 transform hover:-translate-y-1"
             >
-              Launch Your First Mission
+              Deploy Your First Mission
             </button>
           </div>
         )}
@@ -335,7 +338,7 @@ export const TaskList = () => {
           <div className="flex items-center gap-2">
             <input
               type="text"
-              placeholder="Add new category..."
+              placeholder="Create a new rebel squad (hit Enter)..."
               className="flex-1 px-3 py-2 bg-dark-800 border border-dark-700 rounded-lg text-white focus:ring-2 focus:ring-rebel-red focus:border-transparent"
               onKeyPress={async (e) => {
                 if (e.key === 'Enter') {
@@ -375,7 +378,7 @@ export const TaskList = () => {
         {showFilters && (
           <div className="bg-dark-800/50 rounded-lg p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Category</label>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Squad</label>
               <select
                 value={filters.category || ''}
                 onChange={(e) => {
@@ -385,14 +388,14 @@ export const TaskList = () => {
                 }}
                 className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-white text-sm"
               >
-                <option value="">All Categories</option>
+                <option value="">All Squads</option>
                 {categories.map(category => (
                   <option key={category.id} value={category.id}>{category.name}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Priority</label>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Priority Level</label>
               <select
                 value={filters.priority || ''}
                 onChange={(e) => {
@@ -403,13 +406,13 @@ export const TaskList = () => {
                 className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-white text-sm"
               >
                 <option value="">All Priorities</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
+                <option value="low">Meh, Whatever</option>
+                <option value="medium">Get On It</option>
+                <option value="high">Drop Everything!</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Sort By</label>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Sort Your Chaos</label>
               <select
                 value={filters.sortBy}
                 onChange={(e) => {
@@ -421,13 +424,13 @@ export const TaskList = () => {
                 }}
                 className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-white text-sm"
               >
-                <option value="created_at">Created Date</option>
-                <option value="due_date">Due Date</option>
-                <option value="priority">Priority</option>
+                <option value="created_at">Creation Date</option>
+                <option value="due_date">Deadline (LOL)</option>
+                <option value="priority">Panic Level</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Sort Order</label>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Order</label>
               <button
                 onClick={() => {
                   setFilters(prev => ({ 
@@ -456,9 +459,9 @@ export const TaskList = () => {
                   <RocketLaunchIcon className="w-16 h-16 text-rebel-red" />
                 </div>
               </div>
-              <h3 className="text-2xl font-bold text-white mb-2">No Active Missions</h3>
+              <h3 className="text-2xl font-bold text-white mb-2">Mission Control Empty</h3>
               <p className="text-gray-400 mb-8 max-w-md mx-auto">
-                Time to deploy your first mission, rebel! Your path to organized chaos starts here.
+                Your to-do list is as empty as your excuses. Time to fill it with some epic missions!
               </p>
               <button
                 onClick={() => setIsAddTaskExpanded(true)}
@@ -467,7 +470,7 @@ export const TaskList = () => {
                          transition-all duration-300 hover:transform hover:-translate-y-1"
               >
                 <PlusIcon className="w-5 h-5 mr-2" />
-                Launch Your First Mission
+                Deploy Your First Mission
               </button>
             </div>
           ) : (

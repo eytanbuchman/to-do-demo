@@ -75,32 +75,36 @@ export const Analytics = () => {
       // Fetch category stats
       const { data: categories, error: categoriesError } = await supabase
         .from('categories')
-        .select('*, task_categories!inner(task_id)')
+        .select('*')
         .eq('user_id', user?.id)
 
       if (categoriesError) throw categoriesError
 
       const categoryStatsData = await Promise.all(
         categories.map(async (category) => {
-          const { data: taskCount } = await supabase
+          // Get total tasks for this category
+          const { count: taskCount } = await supabase
             .from('task_categories')
-            .select('todos!inner(*)', { count: 'exact' })
+            .select('*', { count: 'exact', head: true })
             .eq('category_id', category.id)
 
-          const { data: completedCount } = await supabase
+          // Get completed tasks for this category
+          const { count: completedCount } = await supabase
             .from('task_categories')
-            .select('todos!inner(*)', { count: 'exact' })
+            .select('todos!inner(*)', { count: 'exact', head: true })
             .eq('category_id', category.id)
             .eq('todos.completed', true)
 
           return {
             category_name: category.name,
-            task_count: taskCount?.length || 0,
-            completed_count: completedCount?.length || 0
+            task_count: taskCount || 0,
+            completed_count: completedCount || 0
           }
         })
       )
-      setCategoryStats(categoryStatsData)
+
+      console.log('Category stats:', categoryStatsData)
+      setCategoryStats(categoryStatsData.filter(cat => cat.task_count > 0))
 
       // Calculate activity stats for the last 7 days
       const last7Days = Array.from({ length: 7 }, (_, i) => {
@@ -220,72 +224,83 @@ export const Analytics = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Task Overview */}
-      <div className="bg-dark-800 rounded-lg p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Task Overview</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-dark-700 rounded-lg p-4">
-            <h3 className="text-dark-400 text-sm font-medium">Completion Rate</h3>
-            <p className="text-2xl font-bold text-white">{taskStats?.completion_rate}%</p>
-          </div>
-          <div className="bg-dark-700 rounded-lg p-4">
-            <h3 className="text-dark-400 text-sm font-medium">Total Tasks</h3>
-            <p className="text-2xl font-bold text-white">{taskStats?.total_tasks}</p>
-          </div>
-          <div className="bg-dark-700 rounded-lg p-4">
-            <h3 className="text-dark-400 text-sm font-medium">Overdue Tasks</h3>
-            <p className="text-2xl font-bold text-white">{taskStats?.overdue_tasks}</p>
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Task Overview */}
+        <div className="bg-dark-800 rounded-lg p-6">
+          <h2 className="text-xl font-semibold text-white mb-4">Mission Control Center</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-dark-700 rounded-lg p-4">
+              <h3 className="text-dark-400 text-sm font-medium">Success Rate</h3>
+              <p className="text-2xl font-bold text-white">{taskStats?.completion_rate}%</p>
+              <p className="text-sm text-gray-400 mt-1">of missions accomplished</p>
+            </div>
+            <div className="bg-dark-700 rounded-lg p-4">
+              <h3 className="text-dark-400 text-sm font-medium">Active Missions</h3>
+              <p className="text-2xl font-bold text-white">{taskStats?.total_tasks}</p>
+              <p className="text-sm text-gray-400 mt-1">total deployments</p>
+            </div>
+            <div className="bg-dark-700 rounded-lg p-4">
+              <h3 className="text-dark-400 text-sm font-medium">Critical Status</h3>
+              <p className="text-2xl font-bold text-white">{taskStats?.overdue_tasks}</p>
+              <p className="text-sm text-gray-400 mt-1">missions need attention</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Category Performance */}
-      <div className="bg-dark-800 rounded-lg p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Category Performance</h2>
-        <div className="space-y-4">
-          {categoryStats.map((category) => (
-            <div key={category.category_name} className="bg-dark-700 rounded-lg p-4">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="text-white font-medium">{category.category_name}</h3>
-                <span className="text-dark-400 text-sm">
-                  {category.completed_count} / {category.task_count} completed
-                </span>
+        {/* Category Performance */}
+        <div className="bg-dark-800 rounded-lg p-6">
+          <h2 className="text-xl font-semibold text-white mb-4">Rebel Squad Performance</h2>
+          <div className="space-y-4">
+            {categoryStats.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-400">No squads deployed yet. Time to organize your rebellion!</p>
               </div>
-              <div className="w-full bg-dark-600 rounded-full h-2">
-                <div
-                  className="bg-rebel-red h-2 rounded-full transition-all duration-500"
-                  style={{
-                    width: `${(category.completed_count / (category.task_count || 1)) * 100}%`
-                  }}
-                />
-              </div>
-            </div>
-          ))}
+            ) : (
+              categoryStats.map((category) => (
+                <div key={category.category_name} className="bg-dark-700 rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-white font-medium">{category.category_name}</h3>
+                    <span className="text-dark-400 text-sm">
+                      {category.completed_count} / {category.task_count} completed
+                    </span>
+                  </div>
+                  <div className="w-full bg-dark-600 rounded-full h-2">
+                    <div
+                      className="bg-rebel-red h-2 rounded-full transition-all duration-500"
+                      style={{
+                        width: `${(category.completed_count / (category.task_count || 1)) * 100}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Recent Activity */}
-      <div className="bg-dark-800 rounded-lg p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Recent Activity</h2>
-        <div className="space-y-4">
-          {activityStats.map((activity) => (
-            <div key={activity.activity_date} className="bg-dark-700 rounded-lg p-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-white font-medium">
-                    {new Date(activity.activity_date).toLocaleDateString()}
-                  </h3>
-                  <p className="text-dark-400 text-sm">
-                    Created: {activity.tasks_created} | Completed: {activity.tasks_completed}
-                  </p>
-                </div>
-                <div className="text-rebel-red">
-                  {activity.tasks_completed > activity.tasks_created ? '↑' : '↓'}
+        {/* Recent Activity */}
+        <div className="bg-dark-800 rounded-lg p-6">
+          <h2 className="text-xl font-semibold text-white mb-4">Rebel Activity Log</h2>
+          <div className="space-y-4">
+            {activityStats.map((activity) => (
+              <div key={activity.activity_date} className="bg-dark-700 rounded-lg p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-white font-medium">
+                      {new Date(activity.activity_date).toLocaleDateString()}
+                    </h3>
+                    <p className="text-dark-400 text-sm">
+                      Deployed: {activity.tasks_created} | Completed: {activity.tasks_completed}
+                    </p>
+                  </div>
+                  <div className="text-rebel-red">
+                    {activity.tasks_completed > activity.tasks_created ? '↑' : '↓'}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>
