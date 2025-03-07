@@ -91,43 +91,40 @@ export const TaskList = () => {
   const fetchTasks = async () => {
     try {
       setLoading(true)
-      console.log('Fetching tasks...')
+      console.log('Fetching tasks with filters:', filters)
       
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('No user found')
 
-      const cacheKey = createCacheKey('todos', { 
-        user_id: user.id,
-        category: filters.category || 'all'
-      })
+      let query = supabase
+        .from('todos')
+        .select(`
+          *,
+          task_categories (
+            category_id
+          )
+        `)
+        .eq('user_id', user.id)
 
-      const { data, error } = await cachedQuery(
-        cacheKey,
-        async () => {
-          let query = supabase
-            .from('todos')
-            .select(`
-              *,
-              task_categories!inner (
-                category_id
-              )
-            `)
-            .eq('user_id', user.id)
-
-          if (filters.category) {
-            query = query.eq('task_categories.category_id', filters.category)
-          }
-
-          if (filters.priority) {
-            query = query.eq('priority', filters.priority.toLowerCase())
-          }
-
-          // Apply sorting
-          query = query.order(filters.sortBy, { ascending: filters.sortOrder === 'asc' })
-
-          return query
+      if (filters.category) {
+        const { data: taskIds } = await supabase
+          .from('task_categories')
+          .select('task_id')
+          .eq('category_id', filters.category)
+        
+        if (taskIds) {
+          query = query.in('id', taskIds.map(t => t.task_id))
         }
-      )
+      }
+
+      if (filters.priority) {
+        query = query.eq('priority', filters.priority.toLowerCase())
+      }
+
+      // Apply sorting
+      query = query.order(filters.sortBy, { ascending: filters.sortOrder === 'asc' })
+
+      const { data, error } = await query
 
       if (error) throw error
 
@@ -342,7 +339,11 @@ export const TaskList = () => {
               <label className="block text-sm font-medium text-gray-400 mb-1">Category</label>
               <select
                 value={filters.category || ''}
-                onChange={(e) => handleFilterChange('category', e.target.value || null)}
+                onChange={(e) => {
+                  const value = e.target.value || null
+                  setFilters(prev => ({ ...prev, category: value }))
+                  fetchTasks()
+                }}
                 className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-white text-sm"
               >
                 <option value="">All Categories</option>
@@ -355,20 +356,30 @@ export const TaskList = () => {
               <label className="block text-sm font-medium text-gray-400 mb-1">Priority</label>
               <select
                 value={filters.priority || ''}
-                onChange={(e) => handleFilterChange('priority', e.target.value || null)}
+                onChange={(e) => {
+                  const value = e.target.value || null
+                  setFilters(prev => ({ ...prev, priority: value }))
+                  fetchTasks()
+                }}
                 className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-white text-sm"
               >
                 <option value="">All Priorities</option>
-                <option value="LOW">Low</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="HIGH">High</option>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Sort By</label>
               <select
                 value={filters.sortBy}
-                onChange={(e) => handleFilterChange('sortBy', e.target.value as any)}
+                onChange={(e) => {
+                  setFilters(prev => ({ 
+                    ...prev, 
+                    sortBy: e.target.value as 'created_at' | 'due_date' | 'priority' 
+                  }))
+                  fetchTasks()
+                }}
                 className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-white text-sm"
               >
                 <option value="created_at">Created Date</option>
@@ -379,7 +390,13 @@ export const TaskList = () => {
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1">Sort Order</label>
               <button
-                onClick={() => handleFilterChange('sortOrder', filters.sortOrder === 'asc' ? 'desc' : 'asc')}
+                onClick={() => {
+                  setFilters(prev => ({ 
+                    ...prev, 
+                    sortOrder: prev.sortOrder === 'asc' ? 'desc' : 'asc' 
+                  }))
+                  fetchTasks()
+                }}
                 className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-dark-700 
                          border border-dark-600 rounded-lg text-white text-sm hover:bg-dark-600 
                          transition-colors duration-200"

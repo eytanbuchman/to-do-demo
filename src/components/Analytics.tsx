@@ -73,7 +73,7 @@ export const Analytics = () => {
       // Fetch category stats
       const { data: categories, error: categoriesError } = await supabase
         .from('categories')
-        .select('*, task_categories!inner(todo_id)')
+        .select('*, task_categories!inner(task_id)')
         .eq('user_id', user?.id)
 
       if (categoriesError) throw categoriesError
