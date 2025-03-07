@@ -3,7 +3,7 @@ import { supabase, cachedQuery, createCacheKey, clearCache } from '../lib/supaba
 import { toast } from 'react-hot-toast'
 import { useLocation } from 'react-router-dom'
 import { TaskForm } from './TaskForm'
-import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, XMarkIcon, FunnelIcon, ArrowsUpDownIcon } from '@heroicons/react/24/outline'
 
 interface Category {
   id: string
@@ -27,6 +27,13 @@ interface TaskType {
   task_categories?: Array<{ category_id: string }>
 }
 
+interface Filters {
+  category: string | null
+  priority: string | null
+  sortBy: 'created_at' | 'due_date' | 'priority'
+  sortOrder: 'asc' | 'desc'
+}
+
 export const TaskList = () => {
   const [tasks, setTasks] = useState<TaskType[]>([])
   const [loading, setLoading] = useState(true)
@@ -34,6 +41,13 @@ export const TaskList = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [isAddTaskExpanded, setIsAddTaskExpanded] = useState(false)
   const [editingTask, setEditingTask] = useState<Partial<TaskType> | null>(null)
+  const [showFilters, setShowFilters] = useState(false)
+  const [filters, setFilters] = useState<Filters>({
+    category: null,
+    priority: null,
+    sortBy: 'created_at',
+    sortOrder: 'desc'
+  })
   const location = useLocation()
 
   useEffect(() => {
@@ -43,7 +57,7 @@ export const TaskList = () => {
     // Check if we were navigated here with a selected category
     const locationState = location.state as { selectedCategory?: string }
     if (locationState?.selectedCategory) {
-      setSelectedCategory(locationState.selectedCategory)
+      setFilters(prev => ({ ...prev, category: locationState.selectedCategory || null }))
     }
   }, [location])
 
@@ -84,7 +98,7 @@ export const TaskList = () => {
 
       const cacheKey = createCacheKey('todos', { 
         user_id: user.id,
-        category: selectedCategory || 'all'
+        category: filters.category || 'all'
       })
 
       const { data, error } = await cachedQuery(
@@ -100,9 +114,16 @@ export const TaskList = () => {
             `)
             .eq('user_id', user.id)
 
-          if (selectedCategory) {
-            query = query.eq('task_categories.category_id', selectedCategory)
+          if (filters.category) {
+            query = query.eq('task_categories.category_id', filters.category)
           }
+
+          if (filters.priority) {
+            query = query.eq('priority', filters.priority.toLowerCase())
+          }
+
+          // Apply sorting
+          query = query.order(filters.sortBy, { ascending: filters.sortOrder === 'asc' })
 
           return query
         }
@@ -261,6 +282,14 @@ export const TaskList = () => {
     setIsAddTaskExpanded(false)
   }
 
+  useEffect(() => {
+    fetchTasks()
+  }, [filters])
+
+  const handleFilterChange = (key: keyof Filters, value: string | null) => {
+    setFilters(prev => ({ ...prev, [key]: value }))
+  }
+
   if (loading && tasks.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -278,19 +307,14 @@ export const TaskList = () => {
           </h1>
           
           <div className="flex items-center space-x-4">
-            <select
-              value={selectedCategory || ''}
-              onChange={(e) => setSelectedCategory(e.target.value || null)}
-              className="px-3 py-2 bg-dark-800/50 border border-dark-700/50 rounded-lg text-white 
-                       focus:ring-2 focus:ring-rebel-red focus:border-transparent backdrop-blur-sm
-                       transition-all duration-200"
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors duration-200
+                        ${showFilters ? 'bg-dark-800 text-white' : 'text-gray-400 hover:text-white'}`}
             >
-              <option value="">All Categories</option>
-              {categories.map(category => (
-                <option key={category.id} value={category.id}>{category.name}</option>
-              ))}
-            </select>
-
+              <FunnelIcon className="w-5 h-5" />
+              <span className="text-sm">Filters</span>
+            </button>
             <button
               onClick={() => setIsAddTaskExpanded(!isAddTaskExpanded)}
               className="flex items-center space-x-2 px-4 py-2 bg-dark-800/50 text-rebel-red border border-rebel-red/20 
@@ -312,116 +336,195 @@ export const TaskList = () => {
           </div>
         </div>
 
-        {isAddTaskExpanded && (
-          <div className="mb-8 bg-dark-800/30 backdrop-blur-sm rounded-lg p-6 border border-dark-700/50
-                         shadow-lg shadow-rebel-red/5">
-            <TaskForm
-              onSubmit={handleAddTask}
-              onCancel={handleCancelEdit}
-              initialData={editingTask}
-              availableCategories={categories}
-            />
+        {showFilters && (
+          <div className="bg-dark-800/50 rounded-lg p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Category</label>
+              <select
+                value={filters.category || ''}
+                onChange={(e) => handleFilterChange('category', e.target.value || null)}
+                className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="">All Categories</option>
+                {categories.map(category => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Priority</label>
+              <select
+                value={filters.priority || ''}
+                onChange={(e) => handleFilterChange('priority', e.target.value || null)}
+                className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="">All Priorities</option>
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Sort By</label>
+              <select
+                value={filters.sortBy}
+                onChange={(e) => handleFilterChange('sortBy', e.target.value as any)}
+                className="w-full bg-dark-700 border border-dark-600 rounded-lg px-3 py-2 text-white text-sm"
+              >
+                <option value="created_at">Created Date</option>
+                <option value="due_date">Due Date</option>
+                <option value="priority">Priority</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Sort Order</label>
+              <button
+                onClick={() => handleFilterChange('sortOrder', filters.sortOrder === 'asc' ? 'desc' : 'asc')}
+                className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-dark-700 
+                         border border-dark-600 rounded-lg text-white text-sm hover:bg-dark-600 
+                         transition-colors duration-200"
+              >
+                <ArrowsUpDownIcon className="w-5 h-5" />
+                <span>{filters.sortOrder === 'asc' ? 'Ascending' : 'Descending'}</span>
+              </button>
+            </div>
           </div>
         )}
 
-        {tasks.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-400">No missions found. Create one to get started!</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {tasks.map(task => (
-              <div
-                key={task.id}
-                className="group bg-dark-800/30 backdrop-blur-sm rounded-lg p-6 border border-dark-700/50
-                         hover:border-rebel-red/20 transition-all duration-300
-                         hover:shadow-lg hover:shadow-rebel-red/5"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3">
-                      <input
-                        type="checkbox"
-                        checked={task.completed}
-                        onChange={(e) => handleUpdateTask(task.id, { completed: e.target.checked })}
-                        className="form-checkbox h-5 w-5 text-rebel-red border-dark-700/50 rounded 
-                                 focus:ring-rebel-red focus:ring-offset-dark-900 transition-all duration-200"
-                      />
-                      <h3 className={`text-lg font-medium transition-all duration-200
-                                  ${task.completed ? 'text-gray-500 line-through' : 'text-white'}`}>
-                        {task.title}
-                      </h3>
-                    </div>
-                    
-                    <div className="mt-2 ml-8">
-                      <p className={`text-sm transition-all duration-200
-                                 ${task.completed ? 'text-gray-600' : 'text-gray-400'}`}>
-                        {task.description}
-                      </p>
-                      
-                      <div className="flex flex-wrap gap-2 mt-3">
-                        {task.categories?.map(categoryId => {
-                          const category = categories.find(c => c.id === categoryId)
-                          return category ? (
-                            <span
-                              key={category.id}
-                              className="px-2 py-0.5 rounded-full text-xs font-medium transition-all duration-200"
-                              style={{ 
-                                backgroundColor: `${category.color}15`,
-                                color: task.completed ? `${category.color}88` : category.color,
-                                border: `1px solid ${category.color}33`
-                              }}
-                            >
-                              {category.name}
-                            </span>
-                          ) : null
-                        })}
-
-                        {task.due_date && (
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium
-                                        ${task.completed 
-                                          ? 'bg-dark-700/30 text-gray-500' 
-                                          : 'bg-rebel-red/10 text-rebel-red'}`}>
-                            Due {new Date(task.due_date).toLocaleDateString()}
-                          </span>
-                        )}
-
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium
-                                      ${task.completed 
-                                        ? 'bg-dark-700/30 text-gray-500' 
-                                        : 'bg-dark-700/50 text-gray-400'}`}>
-                          {task.priority}
-                        </span>
-                      </div>
-                    </div>
+        <div className="space-y-4">
+          {tasks.map(task => (
+            <div
+              key={task.id}
+              onClick={() => setEditingTask(task)}
+              className="group bg-dark-800/50 rounded-lg p-4 hover:bg-dark-800 transition-colors duration-200 cursor-pointer"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3">
+                    <input
+                      type="checkbox"
+                      checked={task.completed}
+                      onChange={(e) => {
+                        e.stopPropagation() // Prevent opening edit mode
+                        handleUpdateTask(task.id, { completed: e.target.checked })
+                      }}
+                      className="form-checkbox h-5 w-5 text-rebel-red rounded border-dark-600
+                               focus:ring-rebel-red focus:ring-offset-dark-900"
+                    />
+                    <h3 className={`text-lg font-medium ${task.completed ? 'text-gray-500 line-through' : 'text-white'}`}>
+                      {task.title}
+                    </h3>
                   </div>
-
-                  <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <button
-                      onClick={() => handleEditTask(task)}
-                      className="p-1 text-dark-400 hover:text-rebel-red transition-colors"
-                      title="Edit mission"
-                    >
-                      ✎
-                    </button>
-                    <button
-                      onClick={() => handleDuplicateTask(task)}
-                      className="p-1 text-dark-400 hover:text-rebel-red transition-colors"
-                      title="Duplicate mission"
-                    >
-                      📋
-                    </button>
-                    <button
-                      onClick={() => handleDeleteTask(task.id)}
-                      className="p-1 text-dark-400 hover:text-rebel-red transition-colors"
-                      title="Delete mission"
-                    >
-                      ×
-                    </button>
+                  {task.description && (
+                    <p className="mt-1 text-gray-400 line-clamp-2">{task.description}</p>
+                  )}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {task.categories?.map(categoryId => {
+                      const category = categories.find(c => c.id === categoryId)
+                      if (!category) return null
+                      return (
+                        <span
+                          key={category.id}
+                          className="px-2 py-1 text-xs rounded-full"
+                          style={{ backgroundColor: `${category.color}20`, color: category.color }}
+                        >
+                          {category.name}
+                        </span>
+                      )
+                    })}
+                    {task.priority && (
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        task.priority === 'high' ? 'bg-red-500/20 text-red-500' :
+                        task.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-500' :
+                        'bg-blue-500/20 text-blue-500'
+                      }`}>
+                        {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority
+                      </span>
+                    )}
+                    {task.due_date && (
+                      <span className="px-2 py-1 text-xs rounded-full bg-purple-500/20 text-purple-500">
+                        Due {new Date(task.due_date).toLocaleDateString()}
+                      </span>
+                    )}
                   </div>
                 </div>
+                <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDuplicateTask(task)
+                    }}
+                    className="p-1 text-gray-400 hover:text-white transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDeleteTask(task.id)
+                    }}
+                    className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    <XMarkIcon className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
-            ))}
+            </div>
+          ))}
+        </div>
+
+        {editingTask && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-dark-900 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-white">Edit Task</h2>
+                  <button
+                    onClick={() => setEditingTask(null)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <XMarkIcon className="w-6 h-6" />
+                  </button>
+                </div>
+                <TaskForm
+                  initialData={editingTask}
+                  onSubmit={async (taskData) => {
+                    await handleUpdateTask(editingTask.id!, taskData)
+                    setEditingTask(null)
+                  }}
+                  onCancel={() => setEditingTask(null)}
+                  availableCategories={categories}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isAddTaskExpanded && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-dark-900 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-white">New Task</h2>
+                  <button
+                    onClick={() => setIsAddTaskExpanded(false)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <XMarkIcon className="w-6 h-6" />
+                  </button>
+                </div>
+                <TaskForm
+                  onSubmit={async (taskData) => {
+                    await handleAddTask(taskData)
+                    setIsAddTaskExpanded(false)
+                  }}
+                  onCancel={() => setIsAddTaskExpanded(false)}
+                  availableCategories={categories}
+                />
+              </div>
+            </div>
           </div>
         )}
       </div>
