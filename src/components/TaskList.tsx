@@ -3,7 +3,7 @@ import { supabase, cachedQuery, createCacheKey, clearCache } from '../lib/supaba
 import { toast } from 'react-hot-toast'
 import { useLocation } from 'react-router-dom'
 import { TaskForm } from './TaskForm'
-import { PlusIcon, XMarkIcon, FunnelIcon, ArrowsUpDownIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, XMarkIcon, FunnelIcon, ArrowsUpDownIcon, RocketLaunchIcon } from '@heroicons/react/24/outline'
 
 interface Category {
   id: string
@@ -298,38 +298,77 @@ export const TaskList = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-rebel-red to-rebel-red-light bg-clip-text text-transparent">
-            Your Missions
-          </h1>
-          
-          <div className="flex items-center space-x-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <div className="flex items-center gap-4">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors duration-200
-                        ${showFilters ? 'bg-dark-800 text-white' : 'text-gray-400 hover:text-white'}`}
+              className="flex items-center gap-2 px-4 py-2 bg-dark-800 hover:bg-dark-700 rounded-lg text-gray-300 transition-colors"
             >
               <FunnelIcon className="w-5 h-5" />
-              <span className="text-sm">Filters</span>
+              Filters
             </button>
             <button
               onClick={() => setIsAddTaskExpanded(!isAddTaskExpanded)}
-              className="flex items-center space-x-2 px-4 py-2 bg-dark-800/50 text-rebel-red border border-rebel-red/20 
-                       rounded-lg backdrop-blur-sm hover:bg-rebel-red hover:text-white 
-                       transition-all duration-300 group"
+              className="flex items-center gap-2 px-4 py-2 bg-rebel-red hover:bg-rebel-red-light rounded-lg text-white transition-colors"
             >
-              {isAddTaskExpanded ? (
-                <>
-                  <XMarkIcon className="w-5 h-5" />
-                  <span>Cancel</span>
-                </>
-              ) : (
-                <>
-                  <PlusIcon className="w-5 h-5" />
-                  <span>New Mission</span>
-                </>
-              )}
+              <PlusIcon className="w-5 h-5" />
+              New Mission
             </button>
+          </div>
+        </div>
+
+        {!loading && tasks.length === 0 && (
+          <div className="text-center py-16 px-4">
+            <RocketLaunchIcon className="w-16 h-16 mx-auto text-rebel-red mb-4" />
+            <h3 className="text-2xl font-bold text-white mb-2">No Missions Yet</h3>
+            <p className="text-gray-400 mb-8">Your mission log is emptier than a programmer's social calendar. Time to start your rebellion!</p>
+            <button
+              onClick={() => setIsAddTaskExpanded(true)}
+              className="bg-rebel-red hover:bg-rebel-red-light text-white px-6 py-3 rounded-lg transition-all duration-300 transform hover:-translate-y-1"
+            >
+              Launch Your First Mission
+            </button>
+          </div>
+        )}
+
+        <div className="mb-4">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              placeholder="Add new category..."
+              className="flex-1 px-3 py-2 bg-dark-800 border border-dark-700 rounded-lg text-white focus:ring-2 focus:ring-rebel-red focus:border-transparent"
+              onKeyPress={async (e) => {
+                if (e.key === 'Enter') {
+                  const input = e.target as HTMLInputElement;
+                  const categoryName = input.value.trim();
+                  if (categoryName) {
+                    try {
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (!user) throw new Error('No user found');
+
+                      const { data, error } = await supabase
+                        .from('categories')
+                        .insert([{
+                          name: categoryName,
+                          user_id: user.id,
+                          color: '#' + Math.floor(Math.random()*16777215).toString(16) // Random color
+                        }])
+                        .select();
+
+                      if (error) throw error;
+                      if (data) {
+                        setCategories([...categories, data[0]]);
+                        input.value = '';
+                        toast.success('Category added');
+                      }
+                    } catch (error) {
+                      console.error('Error adding category:', error);
+                      toast.error('Failed to add category');
+                    }
+                  }
+                }
+              }}
+            />
           </div>
         </div>
 
@@ -409,87 +448,111 @@ export const TaskList = () => {
         )}
 
         <div className="space-y-4">
-          {tasks.map(task => (
-            <div
-              key={task.id}
-              onClick={() => setEditingTask(task)}
-              className="group bg-dark-800/50 rounded-lg p-4 hover:bg-dark-800 transition-colors duration-200 cursor-pointer"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-3">
-                    <input
-                      type="checkbox"
-                      checked={task.completed}
-                      onChange={(e) => {
-                        e.stopPropagation() // Prevent opening edit mode
-                        handleUpdateTask(task.id, { completed: e.target.checked })
-                      }}
-                      className="form-checkbox h-5 w-5 text-rebel-red rounded border-dark-600
-                               focus:ring-rebel-red focus:ring-offset-dark-900"
-                    />
-                    <h3 className={`text-lg font-medium ${task.completed ? 'text-gray-500 line-through' : 'text-white'}`}>
-                      {task.title}
-                    </h3>
-                  </div>
-                  {task.description && (
-                    <p className="mt-1 text-gray-400 line-clamp-2">{task.description}</p>
-                  )}
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {task.categories?.map(categoryId => {
-                      const category = categories.find(c => c.id === categoryId)
-                      if (!category) return null
-                      return (
-                        <span
-                          key={category.id}
-                          className="px-2 py-1 text-xs rounded-full"
-                          style={{ backgroundColor: `${category.color}20`, color: category.color }}
-                        >
-                          {category.name}
-                        </span>
-                      )
-                    })}
-                    {task.priority && (
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        task.priority === 'high' ? 'bg-red-500/20 text-red-500' :
-                        task.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-500' :
-                        'bg-blue-500/20 text-blue-500'
-                      }`}>
-                        {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority
-                      </span>
-                    )}
-                    {task.due_date && (
-                      <span className="px-2 py-1 text-xs rounded-full bg-purple-500/20 text-purple-500">
-                        Due {new Date(task.due_date).toLocaleDateString()}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleDuplicateTask(task)
-                    }}
-                    className="p-1 text-gray-400 hover:text-white transition-colors"
-                  >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleDeleteTask(task.id)
-                    }}
-                    className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                  >
-                    <XMarkIcon className="w-5 h-5" />
-                  </button>
+          {tasks.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="w-24 h-24 mx-auto mb-6 relative">
+                <div className="absolute inset-0 bg-rebel-red/20 rounded-full animate-ping"></div>
+                <div className="relative bg-dark-800 rounded-full p-4">
+                  <RocketLaunchIcon className="w-16 h-16 text-rebel-red" />
                 </div>
               </div>
+              <h3 className="text-2xl font-bold text-white mb-2">No Active Missions</h3>
+              <p className="text-gray-400 mb-8 max-w-md mx-auto">
+                Time to deploy your first mission, rebel! Your path to organized chaos starts here.
+              </p>
+              <button
+                onClick={() => setIsAddTaskExpanded(true)}
+                className="inline-flex items-center px-6 py-3 bg-rebel-red text-white font-semibold rounded-lg 
+                         hover:bg-rebel-red-light shadow-lg hover:shadow-rebel-red/20 
+                         transition-all duration-300 hover:transform hover:-translate-y-1"
+              >
+                <PlusIcon className="w-5 h-5 mr-2" />
+                Launch Your First Mission
+              </button>
             </div>
-          ))}
+          ) : (
+            tasks.map(task => (
+              <div
+                key={task.id}
+                onClick={() => setEditingTask(task)}
+                className="group bg-dark-800/50 rounded-lg p-4 hover:bg-dark-800 transition-colors duration-200 cursor-pointer"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3">
+                      <input
+                        type="checkbox"
+                        checked={task.completed}
+                        onChange={(e) => {
+                          e.stopPropagation() // Prevent opening edit mode
+                          handleUpdateTask(task.id, { completed: e.target.checked })
+                        }}
+                        className="form-checkbox h-5 w-5 text-rebel-red rounded border-dark-600
+                                 focus:ring-rebel-red focus:ring-offset-dark-900"
+                      />
+                      <h3 className={`text-lg font-medium ${task.completed ? 'text-gray-500 line-through' : 'text-white'}`}>
+                        {task.title}
+                      </h3>
+                    </div>
+                    {task.description && (
+                      <p className="mt-1 text-gray-400 line-clamp-2">{task.description}</p>
+                    )}
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {task.categories?.map(categoryId => {
+                        const category = categories.find(c => c.id === categoryId)
+                        if (!category) return null
+                        return (
+                          <span
+                            key={category.id}
+                            className="px-2 py-1 text-xs rounded-full"
+                            style={{ backgroundColor: `${category.color}20`, color: category.color }}
+                          >
+                            {category.name}
+                          </span>
+                        )
+                      })}
+                      {task.priority && (
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          task.priority === 'high' ? 'bg-red-500/20 text-red-500' :
+                          task.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-500' :
+                          'bg-blue-500/20 text-blue-500'
+                        }`}>
+                          {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority
+                        </span>
+                      )}
+                      {task.due_date && (
+                        <span className="px-2 py-1 text-xs rounded-full bg-purple-500/20 text-purple-500">
+                          Due {new Date(task.due_date).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDuplicateTask(task)
+                      }}
+                      className="p-1 text-gray-400 hover:text-white transition-colors"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDeleteTask(task.id)
+                      }}
+                      className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                    >
+                      <XMarkIcon className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         {editingTask && (

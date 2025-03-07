@@ -60,8 +60,8 @@ export const LandingPage = () => {
         </p>
         <button
           onClick={() => setShowAuth(true)}
-          className="bg-rebel-red hover:bg-rebel-red-light text-white text-lg px-8 py-4 rounded-lg shadow-lg 
-                   hover:shadow-rebel-red/20 hover:transform hover:-translate-y-1 transition-all duration-300"
+          className="bg-rebel-red hover:bg-rebel-red-light text-white text-lg font-semibold px-8 py-4 rounded-lg 
+                   shadow-lg hover:shadow-rebel-red/20 hover:transform hover:-translate-y-1 transition-all duration-300"
         >
           Join the Rebellion
         </button>
@@ -121,8 +121,8 @@ export const LandingPage = () => {
           </p>
           <button
             onClick={() => setShowAuth(true)}
-            className="bg-rebel-red hover:bg-rebel-red-light text-white text-lg px-8 py-4 rounded-lg shadow-lg 
-                     hover:shadow-rebel-red/20 hover:transform hover:-translate-y-1 transition-all duration-300"
+            className="bg-rebel-red hover:bg-rebel-red-light text-white text-lg font-semibold px-8 py-4 rounded-lg 
+                     shadow-lg hover:shadow-rebel-red/20 hover:transform hover:-translate-y-1 transition-all duration-300"
           >
             Start Your Revolution
           </button>
@@ -132,23 +132,14 @@ export const LandingPage = () => {
       {/* Footer */}
       <footer className="border-t border-dark-800 py-8">
         <div className="container mx-auto px-4 text-center text-gray-500">
-          <p>Built by rebels, for rebels. No productivity experts were consulted in the making of this app.</p>
+          <p className="mb-2">Built by rebels, for rebels. No productivity experts were consulted in the making of this app.</p>
+          <p>© {new Date().getFullYear()} Eytan Buchman. All rights reserved.</p>
         </div>
       </footer>
 
       {/* Auth Modal */}
       {showAuth && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="relative w-full max-w-md">
-            <button
-              onClick={() => setShowAuth(false)}
-              className="absolute top-4 right-4 text-dark-400 hover:text-white"
-            >
-              ×
-            </button>
-            <Auth />
-          </div>
-        </div>
+        <Auth onClose={() => setShowAuth(false)} />
       )}
     </div>
   )

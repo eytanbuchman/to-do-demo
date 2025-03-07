@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { toast } from 'react-hot-toast'
+import { BeakerIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
+import { Link } from 'react-router-dom'
 
 interface TaskStats {
   total_tasks: number
@@ -189,6 +191,34 @@ export const Analytics = () => {
     )
   }
 
+  if (!taskStats || taskStats.total_tasks === 0) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto text-center py-16">
+          <div className="w-24 h-24 mx-auto mb-6 relative">
+            <div className="absolute inset-0 bg-rebel-red/20 rounded-full animate-pulse"></div>
+            <div className="relative bg-dark-800 rounded-full p-4">
+              <BeakerIcon className="w-16 h-16 text-rebel-red" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">No Data to Analyze Yet</h2>
+          <p className="text-gray-400 mb-8 max-w-md mx-auto">
+            Your rebellion is just beginning! Create some missions and complete them to unlock powerful insights.
+          </p>
+          <Link
+            to="/tasks"
+            className="inline-flex items-center px-6 py-3 bg-rebel-red text-white font-semibold rounded-lg 
+                     hover:bg-rebel-red-light shadow-lg hover:shadow-rebel-red/20 
+                     transition-all duration-300 hover:transform hover:-translate-y-1"
+          >
+            <ArrowRightIcon className="w-5 h-5 mr-2" />
+            Start Creating Missions
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Task Overview */}
@@ -260,4 +290,6 @@ export const Analytics = () => {
       </div>
     </div>
   )
-} 
+}
+
+export default Analytics 

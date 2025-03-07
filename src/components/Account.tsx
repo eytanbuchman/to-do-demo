@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'react-hot-toast'
+import { useLocation } from 'react-router-dom'
 
 interface Profile {
   id: string
@@ -23,6 +24,7 @@ interface Profile {
 export const Account = () => {
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const location = useLocation()
 
   useEffect(() => {
     fetchProfile()
@@ -113,6 +115,15 @@ export const Account = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-2xl mx-auto">
+        {location?.state?.newUser && (
+          <div className="bg-dark-800/50 backdrop-blur-sm rounded-lg p-6 border border-rebel-red/20 mb-8">
+            <h2 className="text-2xl font-bold text-white mb-4">Welcome to TaskRebel! 🚀</h2>
+            <p className="text-gray-300 mb-4">
+              Before you start your rebellion against productivity norms, let's get to know you a bit better.
+              Fill out your profile below to customize your TaskRebel experience.
+            </p>
+          </div>
+        )}
         <h1 className="text-3xl font-bold text-white mb-8">Profile Settings</h1>
         
         <form onSubmit={updateProfile} className="space-y-6">
@@ -194,7 +205,17 @@ export const Account = () => {
                        focus:ring-2 focus:ring-rebel-red focus:border-transparent"
             >
               <option value="">Select timezone</option>
-              {Intl.supportedValuesOf('timeZone').map((tz) => (
+              {[
+                'UTC',
+                'America/New_York',
+                'America/Chicago',
+                'America/Denver',
+                'America/Los_Angeles',
+                'Europe/London',
+                'Europe/Paris',
+                'Asia/Tokyo',
+                'Australia/Sydney'
+              ].map((tz: string) => (
                 <option key={tz} value={tz}>{tz}</option>
               ))}
             </select>
@@ -243,9 +264,10 @@ export const Account = () => {
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2 bg-rebel-red text-white rounded-lg hover:bg-rebel-red-light 
+              className="px-6 py-3 bg-rebel-red text-white font-semibold rounded-lg 
+                       hover:bg-rebel-red-light shadow-lg hover:shadow-rebel-red/20 
                        focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rebel-red 
-                       disabled:opacity-50 transition-colors duration-200"
+                       disabled:opacity-50 transition-all duration-300 hover:transform hover:-translate-y-1"
             >
               {loading ? 'Saving...' : 'Save Changes'}
             </button>

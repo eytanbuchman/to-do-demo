@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { toast } from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
+import { TagIcon } from '@heroicons/react/24/outline'
 
 interface Category {
   id: string
@@ -154,43 +155,60 @@ export const Categories = () => {
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-white mb-8">Categories</h1>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {categories.map((category) => (
-            <div
-              key={category.id}
-              onClick={() => handleCategoryClick(category.id)}
-              className="bg-dark-800/50 backdrop-blur-sm rounded-lg p-6 border border-dark-700 
-                       hover:border-rebel-red/50 transition-all duration-300 cursor-pointer
-                       hover:transform hover:-translate-y-1"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <div
-                    className="w-4 h-4 rounded-full"
-                    style={{ backgroundColor: category.color }}
-                  />
-                  <h3 className="text-lg font-semibold text-white">{category.name}</h3>
-                </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleDeleteCategory(category.id)
-                  }}
-                  className="text-dark-400 hover:text-rebel-red transition-colors"
-                >
-                  ×
-                </button>
-              </div>
-              
-              <div className="text-sm text-gray-400">
-                <p>{category.task_count.incomplete} incomplete / {category.task_count.total} total tasks</p>
+        {categories.length === 0 ? (
+          <div className="text-center py-16 mb-8">
+            <div className="w-24 h-24 mx-auto mb-6 relative">
+              <div className="absolute inset-0 bg-rebel-red/20 rounded-full animate-pulse"></div>
+              <div className="relative bg-dark-800 rounded-full p-4">
+                <TagIcon className="w-16 h-16 text-rebel-red" />
               </div>
             </div>
-          ))}
-        </div>
+            <h3 className="text-2xl font-bold text-white mb-2">No Categories Yet</h3>
+            <p className="text-gray-400 mb-8 max-w-md mx-auto">
+              Create your first category below to start organizing your missions like a true rebel.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {categories.map((category) => (
+              <div
+                key={category.id}
+                onClick={() => handleCategoryClick(category.id)}
+                className="bg-dark-800/50 backdrop-blur-sm rounded-lg p-6 border border-dark-700 
+                         hover:border-rebel-red/50 transition-all duration-300 cursor-pointer
+                         hover:transform hover:-translate-y-1"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-3">
+                    <div
+                      className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: category.color }}
+                    />
+                    <h3 className="text-lg font-semibold text-white">{category.name}</h3>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleDeleteCategory(category.id)
+                    }}
+                    className="text-dark-400 hover:text-rebel-red transition-colors"
+                  >
+                    ×
+                  </button>
+                </div>
+                
+                <div className="text-sm text-gray-400">
+                  <p>{category.task_count.incomplete} incomplete / {category.task_count.total} total tasks</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <form onSubmit={handleAddCategory} className="bg-dark-800/30 rounded-lg p-6 border border-dark-700">
-          <h2 className="text-xl font-semibold text-white mb-4">Add New Category</h2>
+          <h2 className="text-xl font-semibold text-white mb-4">
+            {categories.length === 0 ? 'Create Your First Category' : 'Add New Category'}
+          </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>

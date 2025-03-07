@@ -46,6 +46,9 @@ export default {
           900: '#3d3d3d',
           950: '#262626',
         },
+        'rebel-red': '#FF3B30',
+        'rebel-red-light': '#FF6B61',
+        'rebel-red-dark': '#CC2F26',
       },
       fontFamily: {
         sans: ['Inter var', 'sans-serif'],
