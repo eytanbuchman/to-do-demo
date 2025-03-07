@@ -15,8 +15,9 @@ export const Auth = () => {
       setLoading(true)
       console.log('Attempting to sign in with:', email)
       await signIn(email, password)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error signing in:', error)
+      toast.error(error.message || 'Failed to sign in')
     } finally {
       setLoading(false)
     }
@@ -28,8 +29,10 @@ export const Auth = () => {
       setLoading(true)
       console.log('Attempting to sign up with:', email)
       await signUp(email, password)
-    } catch (error) {
+      toast.success('Account created! Please check your email for verification.')
+    } catch (error: any) {
       console.error('Error signing up:', error)
+      toast.error(error.message || 'Failed to create account')
     } finally {
       setLoading(false)
     }
@@ -41,9 +44,11 @@ export const Auth = () => {
       setLoading(true)
       console.log('Attempting to reset password for:', email)
       await resetPassword(email)
+      toast.success('Password reset instructions sent to your email')
       setIsResetMode(false)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error resetting password:', error)
+      toast.error(error.message || 'Failed to send reset instructions')
     } finally {
       setLoading(false)
     }

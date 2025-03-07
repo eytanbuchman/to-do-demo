@@ -10,16 +10,26 @@ export const ResetPassword = () => {
   useEffect(() => {
     // Check if we have a recovery token in the URL
     const params = new URLSearchParams(window.location.hash.substring(1))
-    const accessToken = params.get('access_token')
+    const token = params.get('token')
+    const type = params.get('type')
     
-    if (accessToken) {
-      // Set the access token in the session
-      supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: '',
+    if (token && type === 'recovery') {
+      // Set the recovery token
+      supabase.auth.verifyOtp({
+        token_hash: token,
+        type: 'recovery'
+      }).then(({ error }) => {
+        if (error) {
+          console.error('Error verifying recovery token:', error)
+          toast.error('Invalid or expired reset link')
+          // Redirect to home after a short delay
+          setTimeout(() => {
+            window.location.href = '/'
+          }, 2000)
+        }
       })
     } else {
-      console.error('No access token found in URL')
+      console.error('No recovery token found in URL')
       toast.error('Invalid reset link')
       // Redirect to home after a short delay
       setTimeout(() => {
@@ -54,9 +64,9 @@ export const ResetPassword = () => {
       setTimeout(() => {
         window.location.href = '/'
       }, 2000)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error resetting password:', error)
-      toast.error('Failed to reset password')
+      toast.error(error.message || 'Failed to reset password')
     } finally {
       setLoading(false)
     }
