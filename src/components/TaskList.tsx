@@ -334,47 +334,6 @@ export const TaskList = () => {
           </div>
         )}
 
-        <div className="mb-4">
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              placeholder="Create a new rebel squad (hit Enter)..."
-              className="flex-1 px-3 py-2 bg-dark-800 border border-dark-700 rounded-lg text-white focus:ring-2 focus:ring-rebel-red focus:border-transparent"
-              onKeyPress={async (e) => {
-                if (e.key === 'Enter') {
-                  const input = e.target as HTMLInputElement;
-                  const categoryName = input.value.trim();
-                  if (categoryName) {
-                    try {
-                      const { data: { user } } = await supabase.auth.getUser();
-                      if (!user) throw new Error('No user found');
-
-                      const { data, error } = await supabase
-                        .from('categories')
-                        .insert([{
-                          name: categoryName,
-                          user_id: user.id,
-                          color: '#' + Math.floor(Math.random()*16777215).toString(16) // Random color
-                        }])
-                        .select();
-
-                      if (error) throw error;
-                      if (data) {
-                        setCategories([...categories, data[0]]);
-                        input.value = '';
-                        toast.success('Category added');
-                      }
-                    } catch (error) {
-                      console.error('Error adding category:', error);
-                      toast.error('Failed to add category');
-                    }
-                  }
-                }
-              }}
-            />
-          </div>
-        </div>
-
         {showFilters && (
           <div className="bg-dark-800/50 rounded-lg p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
@@ -450,7 +409,7 @@ export const TaskList = () => {
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-4 mb-8">
           {tasks.length === 0 ? (
             <div className="text-center py-16">
               <div className="w-24 h-24 mx-auto mb-6 relative">
@@ -557,6 +516,13 @@ export const TaskList = () => {
             ))
           )}
         </div>
+
+        {/* Footer */}
+        <footer className="mt-12 pt-8 border-t border-dark-800">
+          <div className="text-center text-gray-500 text-sm">
+            <p>© {new Date().getFullYear()} Eytan Buchman. All rights reserved.</p>
+          </div>
+        </footer>
 
         {editingTask && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">

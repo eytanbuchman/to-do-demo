@@ -10,18 +10,17 @@ interface Category {
 }
 
 interface TaskType {
-  id: string
-  title: string
-  description: string
-  completed: boolean
-  due_date?: string
-  priority: 'low' | 'medium' | 'high'
-  tags: string[]
-  is_recurring: boolean
-  recurrence_pattern?: string
-  subtasks: any[]
-  categories?: string[]
-  created_at: string
+  id?: string;
+  title: string;
+  description: string;
+  due_date: string | null;
+  priority: 'low' | 'medium' | 'high';
+  tags: string[];
+  is_recurring: boolean;
+  recurrence_pattern?: string;
+  categories: string[];
+  user_id?: string;
+  created_at?: string;
 }
 
 interface TaskFormProps {
@@ -43,37 +42,84 @@ export const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, onCancel, initialD
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     initialData?.categories || []
   )
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const formatDateForInput = (dateString: string | null) => {
+    if (!dateString) return '';
+    // Handle ISO string format
+    if (dateString.includes('T')) {
+      return dateString.split('T')[0];
+    }
+    // Handle yyyy-MM-dd format
+    return dateString;
+  };
+
+  const formatDateForSubmission = (dateString: string) => {
+    if (!dateString) return null;
+    // Ensure the date is in ISO format for the database
+    return new Date(dateString).toISOString();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!user) {
-      toast.error('Please sign in to add tasks')
-      return
-    }
+    e.preventDefault();
+    setIsSubmitting(true);
+    console.log('Submitting form with data:', { title, description, due_date: dueDate, priority, tags, is_recurring: isRecurring, recurrence_pattern: recurrencePattern, categories: selectedCategories });
 
-    const taskData = {
-      title,
-      description,
-      due_date: dueDate || undefined,
-      priority,
-      tags,
-      is_recurring: isRecurring,
-      recurrence_pattern: isRecurring ? recurrencePattern : undefined,
-      categories: selectedCategories
-    }
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No user found');
 
-    onSubmit(taskData)
-    if (!initialData) {
-      setTitle('')
-      setDescription('')
-      setDueDate('')
-      setPriority('medium')
-      setTags([])
-      setIsRecurring(false)
-      setRecurrencePattern('')
-      setSelectedCategories([])
+      // Format the date for submission
+      const formattedDate = dueDate ? formatDateForSubmission(dueDate) : null;
+      console.log('Formatted date:', formattedDate);
+
+      const taskData: Partial<TaskType> = {
+        title,
+        description,
+        due_date: formattedDate,
+        priority,
+        tags,
+        is_recurring: isRecurring,
+        recurrence_pattern: isRecurring ? recurrencePattern : undefined,
+        categories: selectedCategories,
+        user_id: user.id
+      };
+
+      if (initialData?.id) {
+        // Update existing task
+        const { error } = await supabase
+          .from('tasks')
+          .update(taskData)
+          .eq('id', initialData.id);
+
+        if (error) throw error;
+        toast.success('Task updated');
+      } else {
+        // Create new task
+        const { error } = await supabase
+          .from('tasks')
+          .insert([taskData]);
+
+        if (error) throw error;
+        toast.success('Task created');
+      }
+
+      onSubmit(taskData);
+      setTitle('');
+      setDescription('');
+      setDueDate('');
+      setPriority('medium');
+      setTags([]);
+      setIsRecurring(false);
+      setRecurrencePattern('');
+      setSelectedCategories([]);
+    } catch (error) {
+      console.error('Error submitting task:', error);
+      toast.error('Failed to save task');
+    } finally {
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -108,15 +154,16 @@ export const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, onCancel, initialD
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label htmlFor="due_date" className="block text-sm font-medium text-gray-300 mb-2">
             Due Date
           </label>
           <input
             type="date"
-            value={dueDate}
+            id="due_date"
+            name="due_date"
+            value={dueDate ? formatDateForInput(dueDate) : ''}
             onChange={(e) => setDueDate(e.target.value)}
-            className="w-full px-3 py-2 bg-dark-800 border border-dark-700 rounded-lg text-white 
-                     focus:ring-2 focus:ring-rebel-red focus:border-transparent"
+            className="w-full px-3 py-2 bg-dark-800 border border-dark-700 rounded-lg text-white focus:ring-2 focus:ring-rebel-red focus:border-transparent"
           />
         </div>
 
@@ -139,28 +186,66 @@ export const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, onCancel, initialD
 
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">
-          Categories
+          Squad Assignment
         </label>
-        <div className="flex flex-wrap gap-2">
-          {availableCategories.map((category) => (
-            <button
-              key={category.id}
-              type="button"
-              onClick={() => {
-                setSelectedCategories(prev => 
-                  prev.includes(category.id)
-                    ? prev.filter(id => id !== category.id)
-                    : [...prev, category.id]
-                )
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <select
+              multiple
+              value={selectedCategories}
+              onChange={(e) => {
+                const options = Array.from(e.target.selectedOptions).map(option => option.value)
+                setSelectedCategories(options)
               }}
-              className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200
-                       ${selectedCategories.includes(category.id)
-                         ? 'bg-rebel-red text-white'
-                         : 'bg-dark-700 text-gray-400 hover:bg-dark-600'}`}
+              className="w-full px-3 py-2 bg-dark-800 border border-dark-700 rounded-lg text-white 
+                       focus:ring-2 focus:ring-rebel-red focus:border-transparent"
             >
-              {category.name}
-            </button>
-          ))}
+              {availableCategories.map(category => (
+                <option key={category.id} value={category.id}>{category.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              placeholder="Create new squad (hit Enter)..."
+              className="flex-1 px-3 py-2 bg-dark-800 border border-dark-700 rounded-lg text-white 
+                       focus:ring-2 focus:ring-rebel-red focus:border-transparent text-sm"
+              onKeyPress={async (e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  const input = e.target as HTMLInputElement;
+                  const categoryName = input.value.trim();
+                  if (categoryName) {
+                    try {
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (!user) throw new Error('No user found');
+
+                      const { data, error } = await supabase
+                        .from('categories')
+                        .insert([{
+                          name: categoryName,
+                          user_id: user.id,
+                          color: '#' + Math.floor(Math.random()*16777215).toString(16)
+                        }])
+                        .select();
+
+                      if (error) throw error;
+                      if (data) {
+                        availableCategories.push(data[0]);
+                        setSelectedCategories([...selectedCategories, data[0].id]);
+                        input.value = '';
+                        toast.success('Squad created and assigned');
+                      }
+                    } catch (error) {
+                      console.error('Error adding category:', error);
+                      toast.error('Failed to create squad');
+                    }
+                  }
+                }
+              }}
+            />
+          </div>
         </div>
       </div>
 
@@ -200,6 +285,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ onSubmit, onCancel, initialD
         <button
           type="submit"
           className="bg-rebel-red hover:bg-rebel-red-light text-white px-6 py-2 rounded-lg transition-colors"
+          disabled={isSubmitting}
         >
           {initialData ? 'Update Task' : 'Add Task'}
         </button>
